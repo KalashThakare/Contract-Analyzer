@@ -1,0 +1,2 @@
+# Keep model directories tracked (even though contents are gitignored)
+!.gitkeep
