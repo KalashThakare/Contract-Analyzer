@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* ─── Theme tokens ──────────────────────────────────────────── */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Risk colours */
+  --color-risk-high: #ef4444;
+  --color-risk-medium: #f59e0b;
+  --color-risk-low: #22c55e;
+  --color-primary: #3b82f6;
+}
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+/* ─── Base ─────────────────────────────────────────────────── */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400;
+}
+
+/* ─── Risk badge ────────────────────────────────────────────── */
+.risk-badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide;
+}
+.risk-badge.high {
+  @apply bg-red-100 text-red-700;
+}
+.risk-badge.medium {
+  @apply bg-amber-100 text-amber-700;
+}
+.risk-badge.low {
+  @apply bg-emerald-100 text-emerald-700;
+}
+
+/* ─── Clause card ───────────────────────────────────────────── */
+.clause-card {
+  @apply bg-white rounded-lg border border-slate-200 border-l-4 p-4 mb-2.5 cursor-pointer
+         transition-all duration-150 hover:shadow-md;
+}
+.clause-card.high {
+  border-left-color: #dc2626;
+}
+.clause-card.medium {
+  border-left-color: #d97706;
+}
+.clause-card.low {
+  border-left-color: #059669;
+}
+
+/* ─── Section heading ───────────────────────────────────────── */
+.section-heading {
+  @apply text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3;
+}
+
+/* ─── Panel card ────────────────────────────────────────────── */
+.panel-card {
+  @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+}
