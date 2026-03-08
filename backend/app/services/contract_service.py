@@ -23,8 +23,6 @@ settings = get_settings()
 
 
 class ContractService:
-    """Orchestrates upload, analysis, and retrieval of contracts."""
-
     def __init__(self, db: Session):
         self.db = db
 
@@ -66,13 +64,23 @@ class ContractService:
         if not contract:
             raise ContractNotFoundError(contract_id)
 
-        processor = PDFProcessor()
-        clauses_text = processor.segment_clauses(contract.raw_text)
+        contract_raw_text = contract.raw_text
+        contract_filename = contract.filename
+        self.db.expunge(contract)
+        self.db.close()
 
-        # Run DL services
+        processor = PDFProcessor()
+        clauses_text = processor.segment_clauses(contract_raw_text)
+
         unfair_svc = UnfairClauseService()
         similarity_svc = SimilarityService()
         missing_svc = MissingClauseService()
+
+        from app.ml.risk_scorer import RiskScorer
+        from app.ml.clause_classifier import ClauseClassifier
+
+        risk_scorer = RiskScorer()
+        clause_clf = ClauseClassifier()
 
         unfair_results = await unfair_svc.detect(clauses_text)
         similarity_results = await similarity_svc.compare(clauses_text)
@@ -80,10 +88,15 @@ class ContractService:
 
         clause_details: list[ClauseDetail] = []
         for i, text in enumerate(clauses_text):
+            clause_type, clf_confidence = clause_clf.predict(text)
+            risk_score = risk_scorer.score(text)
+
             clause_details.append(
                 ClauseDetail(
                     index=i,
                     text=text,
+                    clause_type=clause_type,
+                    risk_score=risk_score,
                     is_unfair=unfair_results[i].is_unfair if i < len(unfair_results) else None,
                     unfair_confidence=unfair_results[i].confidence if i < len(unfair_results) else None,
                     similarity_score=similarity_results[i].similarity_score if i < len(similarity_results) else None,
@@ -91,29 +104,36 @@ class ContractService:
                 )
             )
 
-        overall_risk = (
-            sum(1 for c in clause_details if c.is_unfair) / max(len(clause_details), 1)
-        ) * 100
-
-        # Persist results
-        analysis = AnalysisResult(
-            contract_id=contract_id,
-            clauses_json=[c.model_dump() for c in clause_details],
-            missing_clauses=missing_result.missing_clauses,
-            overall_risk_score=overall_risk,
+        overall_risk = round(
+            sum(c.risk_score for c in clause_details if c.risk_score is not None)
+            / max(len(clause_details), 1),
+            2,
         )
-        self.db.add(analysis)
-        self.db.commit()
-        self.db.refresh(analysis)
+
+        from app.db.session import SessionLocal
+        db = SessionLocal()
+        try:
+            analysis = AnalysisResult(
+                contract_id=contract_id,
+                clauses_json=[c.model_dump() for c in clause_details],
+                missing_clauses=missing_result.missing_clauses,
+                overall_risk_score=overall_risk,
+            )
+            db.add(analysis)
+            db.commit()
+            db.refresh(analysis)
+            analyzed_at = analysis.analyzed_at
+        finally:
+            db.close()
 
         logger.info("Analysis complete for contract %s", contract_id)
         return ContractAnalysisResponse(
             contract_id=str(contract_id),
-            filename=contract.filename,
+            filename=contract_filename,
             clauses=clause_details,
             missing_clauses=missing_result.missing_clauses,
             overall_risk_score=overall_risk,
-            analyzed_at=analysis.analyzed_at,
+            analyzed_at=analyzed_at,
         )
 
     def get(self, contract_id: str) -> ContractAnalysisResponse:

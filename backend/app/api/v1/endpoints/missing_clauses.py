@@ -11,6 +11,5 @@ router = APIRouter()
 
 @router.post("/detect", response_model=MissingClauseResponse)
 async def detect_missing_clauses(payload: MissingClauseRequest):
-    """Identify important clauses missing from a contract."""
     service = MissingClauseService()
     return await service.detect(payload.clauses, payload.contract_type)

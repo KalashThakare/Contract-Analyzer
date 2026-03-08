@@ -1,7 +1,5 @@
-"""Centralized model loader with lazy-loading and caching."""
-
 import logging
-from pathlib import Path
+import pickle
 from functools import lru_cache
 
 from app.core.config import get_settings
@@ -10,9 +8,23 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-@lru_cache
-def get_model_path(model_name: str) -> Path:
-    path = settings.MODEL_DIR / model_name
-    if not path.exists():
-        logger.warning("Model directory not found: %s", path)
-    return path
+@lru_cache(maxsize=None)
+def load_pkl(filename: str):
+    try:
+        from huggingface_hub import hf_hub_download
+
+        local_path = hf_hub_download(
+            repo_id=settings.HF_REPO_ID,
+            filename=f"{settings.HF_SUBFOLDER}/{filename}",
+            repo_type="model",
+        )
+        with open(local_path, "rb") as f:
+            obj = pickle.load(f)
+
+        logger.info("Loaded '%s'", filename)
+        return obj
+
+    except Exception as e:
+        logger.error("Failed to load '%s': %s", filename, e)
+        load_pkl.cache_clear()
+        return None

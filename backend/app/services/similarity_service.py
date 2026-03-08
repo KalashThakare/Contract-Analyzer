@@ -6,8 +6,6 @@ logger = logging.getLogger(__name__)
 
 
 class SimilarityService:
-    """Business logic for semantic similarity matching."""
-
     async def compare(
         self,
         clauses: list[str],

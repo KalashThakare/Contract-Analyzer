@@ -1,16 +1,7 @@
-"""Missing Clause Detection – Multi-label classifier (Legal-BERT).
-
-TODO (Week 2): Replace dummy logic with actual model inference.
-- Load fine-tuned Legal-BERT from models/missing_clause/
-- Classify which expected clause types are present
-- Return list of missing types
-"""
-
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Standard clause types expected in a general contract
 EXPECTED_CLAUSES: dict[str, list[str]] = {
     "general": [
         "confidentiality",
@@ -45,14 +36,10 @@ EXPECTED_CLAUSES: dict[str, list[str]] = {
 
 
 class MissingClauseDetector:
-    """Identify important clauses missing from a contract."""
-
     def __init__(self):
-        # TODO: Load multi-label classifier
-        logger.info("MissingClauseDetector initialized (using placeholder logic)")
+        logger.info("MissingClauseDetector initialized (placeholder)")
 
     def detect(self, clauses: list[str], contract_type: str = "general") -> dict:
-        """Return dict with keys: missing (list[str]), coverage_score (float)."""
         expected = EXPECTED_CLAUSES.get(contract_type, EXPECTED_CLAUSES["general"])
 
         # Placeholder – pretend all clauses are present

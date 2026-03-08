@@ -6,11 +6,6 @@ logger = logging.getLogger(__name__)
 
 
 class UnfairClauseService:
-    """Business logic for unfair clause detection.
-
-    Delegates inference to the ML layer (app.ml.unfair_detector).
-    """
-
     async def detect(self, clauses: list[str]) -> list[UnfairClauseResponse]:
         from app.ml.unfair_detector import UnfairDetector
 

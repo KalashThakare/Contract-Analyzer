@@ -18,6 +18,12 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     setup_logging()
     Base.metadata.create_all(bind=engine)
+    from app.ml.unfair_detector import _load_bert, _load_svc
+    from app.ml.model_loader import load_pkl
+    _load_bert()
+    _load_svc()
+    load_pkl("risk_scorer_baseline.pkl")
+    load_pkl("risk_vectorizer.pkl")
     yield
 
 

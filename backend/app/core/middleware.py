@@ -9,8 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Logs request method, path, status code, and latency."""
-
     async def dispatch(self, request: Request, call_next) -> Response:
         start = time.perf_counter()
         response = await call_next(request)

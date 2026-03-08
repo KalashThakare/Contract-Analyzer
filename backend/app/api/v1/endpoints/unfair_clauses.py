@@ -11,6 +11,5 @@ router = APIRouter()
 
 @router.post("/detect", response_model=list[UnfairClauseResponse])
 async def detect_unfair_clauses(payload: UnfairClauseRequest):
-    """Detect potentially unfair clauses in the given text."""
     service = UnfairClauseService()
     return await service.detect(payload.clauses)

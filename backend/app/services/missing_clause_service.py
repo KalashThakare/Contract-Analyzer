@@ -6,8 +6,6 @@ logger = logging.getLogger(__name__)
 
 
 class MissingClauseService:
-    """Business logic for detecting missing clauses."""
-
     async def detect(
         self,
         clauses: list[str],

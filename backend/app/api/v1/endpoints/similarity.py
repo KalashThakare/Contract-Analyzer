@@ -11,6 +11,5 @@ router = APIRouter()
 
 @router.post("/compare", response_model=list[SimilarityResponse])
 async def compare_clauses(payload: SimilarityRequest):
-    """Compare clauses against standard templates using semantic similarity."""
     service = SimilarityService()
     return await service.compare(payload.clauses, payload.template_category)

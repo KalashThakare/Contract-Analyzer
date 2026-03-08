@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 
 class ContractUploadResponse(BaseModel):
@@ -20,6 +20,17 @@ class ClauseDetail(BaseModel):
     risk_score: float | None = None
     similarity_score: float | None = None
     matched_template: str | None = None
+
+    @computed_field
+    @property
+    def risk_level(self) -> str | None:
+        if self.risk_score is None:
+            return None
+        if self.risk_score >= 70:
+            return "HIGH"
+        elif self.risk_score >= 40:
+            return "MEDIUM"
+        return "LOW"
 
 
 class ContractAnalysisResponse(BaseModel):
