@@ -22,6 +22,12 @@ import type {
 
 /* ─── Raw backend shapes (mirrors backend Pydantic schemas) ──── */
 
+interface RawEntityDetail {
+  text: string;
+  label: string;       // PARTY, DATE, AMOUNT, TERM, JURISDICTION
+  confidence: number;
+}
+
 interface RawClauseDetail {
   index: number;
   text: string;
@@ -31,6 +37,7 @@ interface RawClauseDetail {
   risk_score?: number | null;
   similarity_score?: number | null;
   matched_template?: string | null;
+  entities?: RawEntityDetail[] | null;
 }
 
 interface RawContractAnalysis {
@@ -88,6 +95,36 @@ function extractClauseEntities(text: string): ClauseEntities {
     dates: [...dates],
     amounts: [...amounts],
   };
+}
+
+/** Extract entities from backend NER results, falling back to regex. */
+function buildClauseEntities(rc: RawClauseDetail): ClauseEntities {
+  const backendEntities = rc.entities;
+  if (backendEntities && backendEntities.length > 0) {
+    const parties = new Set<string>();
+    const dates = new Set<string>();
+    const amounts = new Set<string>();
+    for (const e of backendEntities) {
+      switch (e.label) {
+        case "PARTY":
+          parties.add(e.text);
+          break;
+        case "DATE":
+          dates.add(e.text);
+          break;
+        case "AMOUNT":
+          amounts.add(e.text);
+          break;
+      }
+    }
+    return {
+      parties: [...parties],
+      dates: [...dates],
+      amounts: [...amounts],
+    };
+  }
+  // fallback to regex extraction if backend didn't provide entities
+  return extractClauseEntities(rc.text);
 }
 
 /** Derive a human-friendly clause type label from the matched template or text. */
@@ -161,7 +198,7 @@ export function transformAnalysisResponse(raw: any): AnalysisResult {
   const clauses: Clause[] = data.clauses.map((rc) => {
     const riskScore = rc.risk_score ?? (rc.is_unfair ? 75 : 25);
     const riskLevel = computeRiskLevel(riskScore);
-    const entities = extractClauseEntities(rc.text);
+    const entities = buildClauseEntities(rc);
 
     return {
       id: rc.index,
@@ -194,16 +231,25 @@ export function transformAnalysisResponse(raw: any): AnalysisResult {
   const allParties = new Set<string>();
   const allDates = new Set<string>();
   const allAmounts = new Set<string>();
+  const allJurisdictions = new Set<string>();
   for (const c of clauses) {
     c.entities.parties.forEach((p) => allParties.add(p));
     c.entities.dates.forEach((d) => allDates.add(d));
     c.entities.amounts.forEach((a) => allAmounts.add(a));
   }
+  // extract jurisdictions from backend NER entities
+  for (const rc of data.clauses) {
+    if (rc.entities) {
+      for (const e of rc.entities) {
+        if (e.label === "JURISDICTION") allJurisdictions.add(e.text);
+      }
+    }
+  }
   const entities: DocumentEntities = {
     parties: [...allParties],
     dates: [...allDates],
     amounts: [...allAmounts],
-    jurisdictions: [], // TODO: extract from text if needed
+    jurisdictions: [...allJurisdictions],
   };
 
   // ── Build document meta ──────────────────────────────

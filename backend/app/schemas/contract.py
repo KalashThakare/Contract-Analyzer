@@ -11,6 +11,12 @@ class ContractUploadResponse(BaseModel):
     uploaded_at: datetime
 
 
+class EntityDetail(BaseModel):
+    text: str
+    label: str       # PARTY, DATE, AMOUNT, TERM, JURISDICTION
+    confidence: float
+
+
 class ClauseDetail(BaseModel):
     index: int
     text: str
@@ -20,6 +26,7 @@ class ClauseDetail(BaseModel):
     risk_score: float | None = None
     similarity_score: float | None = None
     matched_template: str | None = None
+    entities: list[EntityDetail] = []
 
     @computed_field
     @property

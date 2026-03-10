@@ -12,11 +12,14 @@ from app.schemas.contract import (
     ContractUploadResponse,
     ContractAnalysisResponse,
     ClauseDetail,
+    EntityDetail,
 )
 from app.services.pdf_processor import PDFProcessor
 from app.services.unfair_clause_service import UnfairClauseService
 from app.services.similarity_service import SimilarityService
 from app.services.missing_clause_service import MissingClauseService
+from app.ml.clause_segmenter import segment_clauses
+from app.ml.ner_extractor import extract_entities
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -38,7 +41,10 @@ class ContractService:
 
         processor = PDFProcessor()
         raw_text, page_count = processor.extract_text(content)
-        clauses = processor.segment_clauses(raw_text)
+        clauses = segment_clauses(raw_text)
+        # fallback to basic splitter if ML segmenter returns nothing
+        if not clauses:
+            clauses = processor.segment_clauses(raw_text)
 
         contract = Contract(
             filename=file.filename,
@@ -70,7 +76,10 @@ class ContractService:
         self.db.close()
 
         processor = PDFProcessor()
-        clauses_text = processor.segment_clauses(contract_raw_text)
+        clauses_text = segment_clauses(contract_raw_text)
+        # fallback to basic splitter if ML segmenter returns nothing
+        if not clauses_text:
+            clauses_text = processor.segment_clauses(contract_raw_text)
 
         unfair_svc = UnfairClauseService()
         similarity_svc = SimilarityService()
@@ -88,7 +97,16 @@ class ContractService:
 
         clause_details: list[ClauseDetail] = []
         for i, text in enumerate(clauses_text):
+            # Step 1: NER — extract entities (runs before classifier)
+            raw_entities = extract_entities(text, settings.NER_MODEL)
+            entities = [
+                EntityDetail(text=e["text"], label=e["label"], confidence=e["confidence"])
+                for e in raw_entities
+            ]
+
+            # Step 2: Clause classification (Jayesh)
             clause_type, clf_confidence = clause_clf.predict(text)
+            # Step 3: Risk scoring (Jayesh)
             risk_score = risk_scorer.score(text)
 
             clause_details.append(
@@ -101,6 +119,7 @@ class ContractService:
                     unfair_confidence=unfair_results[i].confidence if i < len(unfair_results) else None,
                     similarity_score=similarity_results[i].similarity_score if i < len(similarity_results) else None,
                     matched_template=similarity_results[i].most_similar_template if i < len(similarity_results) else None,
+                    entities=entities,
                 )
             )
 

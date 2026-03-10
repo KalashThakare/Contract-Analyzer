@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     HF_REPO_ID: str = "AnkushRaheja/Legal-Document-Analyzer"
     HF_SUBFOLDER: str = "sklearn-models"
 
+    NER_MODEL: str = "Devil1710/Legal-Document-Analyzer-NER"
+
     MAX_UPLOAD_SIZE_MB: int = 20
     UPLOAD_DIR: Path = Path("uploads")
 
