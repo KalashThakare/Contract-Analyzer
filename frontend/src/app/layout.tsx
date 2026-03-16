@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import { AnalysisProvider } from "@/context/AnalysisContext";
+import { Providers } from "@/components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,9 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Legal Document Analyzer",
-  description:
-    "AI-powered legal document analysis — clause classification, risk scoring, entity extraction, and AI explanations.",
+  title: "AI Legal Contract Analyzer",
+  description: "Enterprise-grade AI legal document analysis platform.",
 };
 
 export default function RootLayout({
@@ -26,16 +24,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <AnalysisProvider>
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">{children}</main>
-          </div>
-        </AnalysisProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen flex flex-col transition-colors duration-300`}>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

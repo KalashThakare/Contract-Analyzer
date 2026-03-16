@@ -1,82 +1,117 @@
 @import "tailwindcss";
 
-/* ─── Theme tokens ──────────────────────────────────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  /* Risk colours */
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* Enterprise neutral risk colors */
   --color-risk-high: #ef4444;
   --color-risk-medium: #f59e0b;
-  --color-risk-low: #22c55e;
-  --color-primary: #3b82f6;
+  --color-risk-low: #10b981;
 }
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #fafafa; /* zinc-50 */
+  --foreground: #18181b; /* zinc-900 */
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --muted: #f4f4f5; /* zinc-100 */
+  --muted-foreground: #71717a; /* zinc-500 */
+  --border: #e4e4e7; /* zinc-200 */
+  --primary: #4f46e5; /* indigo-600 */
+  --primary-foreground: #ffffff;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
 }
 
-/* ─── Base ─────────────────────────────────────────────────── */
+.dark {
+  --background: #09090b; /* zinc-950 */
+  --foreground: #e4e4e7; /* zinc-200 */
+  --card: #18181b; /* zinc-900 */
+  --card-foreground: #e4e4e7;
+  --muted: #27272a; /* zinc-800 */
+  --muted-foreground: #a1a1aa; /* zinc-400 */
+  --border: #27272a; /* zinc-800 */
+  --primary: #818cf8; /* indigo-400 */
+  --primary-foreground: #09090b;
+  --accent: #27272a;
+  --accent-foreground: #e4e4e7;
+}
+
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ─── Scrollbar ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full;
-}
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-400;
-}
-
-/* ─── Risk badge ────────────────────────────────────────────── */
-.risk-badge {
-  @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide;
-}
-.risk-badge.high {
-  @apply bg-red-100 text-red-700;
-}
-.risk-badge.medium {
-  @apply bg-amber-100 text-amber-700;
-}
-.risk-badge.low {
-  @apply bg-emerald-100 text-emerald-700;
+  background-color: var(--muted-foreground);
+  opacity: 0.5;
+  border-radius: 9999px;
 }
 
-/* ─── Clause card ───────────────────────────────────────────── */
-.clause-card {
-  @apply bg-white rounded-lg border border-slate-200 border-l-4 p-4 mb-2.5 cursor-pointer
-         transition-all duration-150 hover:shadow-md;
+/* ─── Enterprise Linear/Stripe UI Tokens ─────────────────── */
+
+/* Replaced heavy glass-panel with crisp, simple panels */
+.glass-panel {
+  @apply bg-card border border-border rounded-lg shadow-sm;
 }
-.clause-card.high {
-  border-left-color: #dc2626;
-}
-.clause-card.medium {
-  border-left-color: #d97706;
-}
-.clause-card.low {
-  border-left-color: #059669;
+.glass-panel-hover {
+  @apply hover:border-primary/50 transition-colors duration-200;
 }
 
-/* ─── Section heading ───────────────────────────────────────── */
+/* Thin, subtle dot-based risk indicators replacing blocky backgrounds */
+.risk-indicator-dot {
+  @apply w-2 h-2 rounded-full shrink-0;
+}
+.risk-indicator-dot.high {
+  @apply bg-red-500;
+}
+.risk-indicator-dot.medium {
+  @apply bg-amber-500;
+}
+.risk-indicator-dot.low {
+  @apply bg-emerald-500;
+}
+
+/* Extremely minimal entity pill tags */
+.entity-tag {
+  @apply inline-flex items-center px-2 py-0.5 rounded-md border border-border bg-card text-xs font-medium text-foreground transition-colors;
+}
+.entity-tag:hover {
+  @apply bg-muted;
+}
+
+/* Section Title Typography */
 .section-heading {
-  @apply text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3;
+  @apply text-sm font-semibold text-foreground mb-4 tracking-tight;
 }
 
-/* ─── Panel card ────────────────────────────────────────────── */
-.panel-card {
-  @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+/* Remove glow text, default to minimalist strong primary */
+.text-gradient {
+  color: var(--primary);
+}
+.text-gradient-dark {
+  color: var(--primary);
 }
