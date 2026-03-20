@@ -15,6 +15,7 @@ import type {
   ClauseEntities,
   DocumentEntities,
   DocumentMeta,
+  MissingClause,
   RiskLevel,
   Summary,
   UploadResponse,
@@ -24,7 +25,7 @@ import type {
 
 interface RawEntityDetail {
   text: string;
-  label: string;       // PARTY, DATE, AMOUNT, TERM, JURISDICTION
+  label: string; // PARTY, DATE, AMOUNT, TERM, JURISDICTION
   confidence: number;
 }
 
@@ -32,11 +33,16 @@ interface RawClauseDetail {
   index: number;
   text: string;
   clause_type?: string | null;
+  classification_confidence?: number | null;
   is_unfair?: boolean | null;
   unfair_confidence?: number | null;
   risk_score?: number | null;
   similarity_score?: number | null;
   matched_template?: string | null;
+  explanation?: string | null;
+  top_risk_terms?: string[] | null;
+  recommendation?: string | null;
+  ai_source?: string | null;
   entities?: RawEntityDetail[] | null;
 }
 
@@ -44,7 +50,7 @@ interface RawContractAnalysis {
   contract_id: string;
   filename: string;
   clauses: RawClauseDetail[];
-  missing_clauses: string[];
+  missing_clauses: any[];
   overall_risk_score: number;
   analyzed_at: string;
 }
@@ -60,8 +66,8 @@ interface RawUploadResponse {
 /* ─── Helpers ─────────────────────────────────────────────── */
 
 function computeRiskLevel(score: number): RiskLevel {
-  if (score >= 65) return "high";
-  if (score >= 35) return "medium";
+  if (score >= 70) return "high";
+  if (score >= 40) return "medium";
   return "low";
 }
 
@@ -74,7 +80,9 @@ function extractClauseEntities(text: string): ClauseEntities {
     /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi,
     /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
   ];
-  const amountPatterns = [/\$[\d,]+(?:\.\d{2})?(?:\s+(?:per\s+\w+|million|billion))?/gi];
+  const amountPatterns = [
+    /\$[\d,]+(?:\.\d{2})?(?:\s+(?:per\s+\w+|million|billion))?/gi,
+  ];
 
   const parties = new Set<string>();
   const dates = new Set<string>();
@@ -136,7 +144,8 @@ function deriveClauseType(raw: RawClauseDetail): string {
   const t = raw.text.toLowerCase();
   if (t.includes("indemnif")) return "Indemnification";
   if (t.includes("terminat")) return "Termination";
-  if (t.includes("non-compete") || t.includes("noncompete")) return "Non-Compete";
+  if (t.includes("non-compete") || t.includes("noncompete"))
+    return "Non-Compete";
   if (t.includes("confidential")) return "Confidentiality";
   if (t.includes("intellectual property") || t.includes("invention"))
     return "Intellectual Property";
@@ -144,8 +153,7 @@ function deriveClauseType(raw: RawClauseDetail): string {
     return "Governing Law";
   if (t.includes("limitation of liability") || t.includes("consequential"))
     return "Limitation of Liability";
-  if (t.includes("salary") || t.includes("compensation"))
-    return "Compensation";
+  if (t.includes("salary") || t.includes("compensation")) return "Compensation";
   if (t.includes("warranty") || t.includes("warranties")) return "Warranty";
   if (t.includes("force majeure")) return "Force Majeure";
   return "General";
@@ -204,13 +212,24 @@ export function transformAnalysisResponse(raw: any): AnalysisResult {
       id: rc.index,
       text: rc.text,
       type: deriveClauseType(rc),
-      confidence: rc.unfair_confidence ?? rc.similarity_score ?? 0.5,
+      confidence:
+        rc.classification_confidence ??
+        rc.unfair_confidence ??
+        rc.similarity_score ??
+        0.5,
       risk_score: Math.round(riskScore * 10) / 10,
       risk_level: riskLevel,
       is_unfair: rc.is_unfair ?? false,
       entities,
-      explanation: null, // backend doesn't provide explanations yet
-      top_risk_terms: extractRiskTerms(rc.text),
+      explanation: rc.explanation ?? null,
+      top_risk_terms:
+        rc.top_risk_terms && rc.top_risk_terms.length > 0
+          ? rc.top_risk_terms
+          : extractRiskTerms(rc.text),
+      recommendation: rc.recommendation ?? null,
+      ai_source: rc.ai_source ?? null,
+      similarity_score: rc.similarity_score ?? null,
+      matched_template: rc.matched_template ?? null,
     };
   });
 
@@ -261,5 +280,25 @@ export function transformAnalysisResponse(raw: any): AnalysisResult {
     filename: data.filename,
   };
 
-  return { document, summary, entities, clauses };
+  // ── Build missing clauses safely ─────────────────────
+  const missingClauses: MissingClause[] = Array.isArray(data.missing_clauses)
+    ? data.missing_clauses.map((mc) => {
+        if (typeof mc === "string") {
+          return {
+            name: mc,
+            why_it_matters: "A standard structural component expected in documents of this nature is absent.",
+            risk_level: "Medium",
+            example_wording: "[Standard corporate policy text recommended.]",
+          } satisfies MissingClause;
+        }
+        return {
+          name: mc.name || "Unknown Clause",
+          why_it_matters: mc.why_it_matters || "Standard component absent.",
+          risk_level: mc.risk_level || "Medium",
+          example_wording: mc.example_wording || "N/A",
+        } satisfies MissingClause;
+      })
+    : [];
+
+  return { document, summary, entities, clauses, missing_clauses: missingClauses };
 }
