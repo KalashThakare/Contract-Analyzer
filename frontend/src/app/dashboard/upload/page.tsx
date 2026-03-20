@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAnalysis } from "@/context/AnalysisContext";
-import { uploadDocument, analyzeDocument } from "@/services/api";
+import { uploadDocument, analyzeDocument, analyzeDocumentLlmClauses, analyzeDocumentLlmMissing } from "@/services/api";
 import { AnimatedContainer } from "@/components/ui/AnimatedContainer";
 import { 
   FileUp, ShieldCheck, Database, FileText, Scale, Loader2, XCircle, CheckCircle2
@@ -12,16 +12,24 @@ import { cn } from "@/lib/utils";
 
 // Mock PIPELINE visualization steps
 const PIPELINE_STEPS = [
-  { id: "upload", label: "Ingesting Document Binary", icon: FileUp },
-  { id: "ocr", label: "Parsing Paragraph Topography", icon: FileText },
-  { id: "classify", label: "Taxonomy Classification Engine", icon: Database },
-  { id: "risk", label: "Calculating Liability Scoring Arrays", icon: Scale },
-  { id: "sim", label: "Running Diff vs Baseline Polices", icon: ShieldCheck },
+  { id: "upload", label: "Reading File", icon: FileUp },
+  { id: "ocr", label: "Scanning Text", icon: FileText },
+  { id: "classify", label: "Sorting Clauses", icon: Database },
+  { id: "risk", label: "Scoring Risks", icon: Scale },
+  { id: "sim", label: "Finalizing Results", icon: ShieldCheck },
 ];
 
 export default function UploadPage() {
   const router = useRouter();
-  const { setResult, setUploadInfo } = useAnalysis();
+  const {
+    setResult,
+    setUploadInfo,
+    setIsAnalyzing,
+    setLlmClauseError,
+    setIsMissingAnalyzing,
+    setLlmMissingError,
+    addNotification,
+  } = useAnalysis();
   
   const [file, setFile] = useState<File | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -43,6 +51,10 @@ export default function UploadPage() {
     setFile(selectedFile);
     setUploadState("uploading");
     
+    // Reset all LLM states
+    setLlmClauseError(null);
+    setLlmMissingError(null);
+
     setTimeout(() => {
       setUploadState("processing");
       simulatePipeline();
@@ -54,22 +66,79 @@ export default function UploadPage() {
         filename: selectedFile.name,
         pages: uploadRes.page_count || 1, 
       });
+      
+      // 1. FAST DL PIPELINE
       const analysisRes = await analyzeDocument(uploadRes.contract_id);
       setResult(analysisRes);
       
-      setTimeout(() => {
-        setUploadState("success");
-      }, 5500);
+      // Complete UI trace fast — route immediately
+      setUploadState("success");
+      addNotification({
+        title: "Analysis Successful",
+        message: `Fast DL analysis completed with code ${uploadRes.contract_id.substring(0, 8)} for ${selectedFile.name}.`,
+        type: "success",
+        contractId: uploadRes.contract_id,
+      });
+      router.push("/dashboard");
 
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 6500);
+      // 2. Phase 1: LLM clause analysis (background)
+      setIsAnalyzing(true);
+      analyzeDocumentLlmClauses(uploadRes.contract_id)
+        .then((clauseRes) => {
+          setResult(clauseRes); // Update store with clause-level explanations
+          addNotification({
+            title: "Clause LLM Complete",
+            message: `Deep semantic review of ${selectedFile.name} was successful.`,
+            type: "success",
+          });
+        })
+        .catch((e) => {
+          console.error("LLM clause analysis failed:", e);
+          setLlmClauseError(typeof e === "string" ? e : "LLM clause analysis failed. Try re-uploading.");
+          addNotification({
+            title: "Clause LLM Failed",
+            message: `Deep analysis failed for ${selectedFile.name}.`,
+            type: "error",
+          });
+        })
+        .finally(() => {
+          setIsAnalyzing(false);
+
+          // 3. Phase 2: LLM missing clause detection (starts AFTER phase 1)
+          setIsMissingAnalyzing(true);
+          analyzeDocumentLlmMissing(uploadRes.contract_id)
+            .then((missingRes) => {
+              setResult(missingRes); // Update store with missing clauses
+              addNotification({
+                title: "Missing Clauses Detected",
+                message: `Missing clause scan of ${selectedFile.name} completed successfully.`,
+                type: "success",
+              });
+            })
+            .catch((e) => {
+              console.error("LLM missing clause detection failed:", e);
+              setLlmMissingError(typeof e === "string" ? e : "Missing clause detection failed. Results may be incomplete.");
+              addNotification({
+                title: "Missing Clauses Failed",
+                message: `Failed to detect missing clauses for ${selectedFile.name}.`,
+                type: "error",
+              });
+            })
+            .finally(() => {
+              setIsMissingAnalyzing(false);
+            });
+        });
 
     } catch (error) {
       const err = error as Error;
       console.error(err);
       setUploadState("error");
       setErrorText(err.message || "Inference pipeline failed during tokenization. Check console logs.");
+      addNotification({
+        title: "Analysis Failed",
+        message: `Analysis failed for ${selectedFile.name}: ${err.message || "Unknown error"}`,
+        type: "error",
+      });
     }
   };
 
@@ -101,10 +170,10 @@ export default function UploadPage() {
       <div className="flex-1 flex flex-col">
         <AnimatedContainer animation="fade-in" duration={0.2} className="mb-6">
           <h1 className="text-xl font-semibold tracking-tight text-foreground flex items-center gap-2">
-            <FileUp className="w-5 h-5 text-muted-foreground" /> Contract Ingestion Pipeline
+            <FileUp className="w-5 h-5 text-muted-foreground" /> Upload Contract
           </h1>
           <p className="text-xs text-muted-foreground mt-1 max-w-xl">
-            Drop raw PDFs to initiate dense neural vector validation against company policy models.
+            Drop your legal contracts here to instantly analyze risk and obligations.
           </p>
         </AnimatedContainer>
 
@@ -129,15 +198,15 @@ export default function UploadPage() {
                    <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center mb-4">
                      <FileUp className="w-5 h-5 text-muted-foreground" />
                    </div>
-                   <h3 className="text-sm font-semibold text-foreground mb-1">Drag & Drop Document Buffer</h3>
-                   <p className="text-xs text-muted-foreground max-w-sm">Supports PDF, DOCX, TXT. Inference restricted to 50MB per request.</p>
+                   <h3 className="text-sm font-semibold text-foreground mb-1">Drag & Drop Document Here</h3>
+                   <p className="text-xs text-muted-foreground max-w-sm">Supports PDF, DOCX, TXT. Max file size: 50MB.</p>
                 </div>
               )}
 
               {uploadState === "uploading" && (
                 <div className="flex flex-col items-center text-center">
                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
-                   <h3 className="text-sm font-semibold text-foreground mb-1">Transmitting BLOB Data</h3>
+                   <h3 className="text-sm font-semibold text-foreground mb-1">Uploading File</h3>
                    <p className="text-xs text-primary font-mono">{file?.name}</p>
                 </div>
               )}
@@ -148,8 +217,8 @@ export default function UploadPage() {
                      <div className="absolute inset-x-0 bottom-0 bg-primary/20 animate-pulse w-full h-full" />
                      <Database className="w-5 h-5 text-primary relative z-10 animate-pulse" />
                    </div>
-                   <h3 className="text-sm font-semibold text-foreground mb-1">Inference Engine Active</h3>
-                   <p className="text-xs text-muted-foreground font-mono">Running parallel taxonomy classification</p>
+                   <h3 className="text-sm font-semibold text-foreground mb-1">Deep Learning Pass Active</h3>
+                   <p className="text-xs text-muted-foreground font-mono">Analyzing clauses using fine-tuned BERT architecture...</p>
                 </div>
               )}
 
@@ -158,8 +227,8 @@ export default function UploadPage() {
                    <div className="w-12 h-12 bg-emerald-500/10 rounded-md flex items-center justify-center mb-4">
                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                    </div>
-                   <h3 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-1">Telemetry Output Complete</h3>
-                   <p className="text-xs text-muted-foreground">Redirecting to Analysis Matrix...</p>
+                   <h3 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-1">Analysis Complete</h3>
+                   <p className="text-xs text-muted-foreground">Redirecting to Dashboard...</p>
                 </div>
               )}
 
@@ -168,8 +237,8 @@ export default function UploadPage() {
                    <div className="w-12 h-12 bg-red-500/10 rounded-md flex items-center justify-center mb-4">
                      <XCircle className="w-5 h-5 text-red-500" />
                    </div>
-                   <h3 className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">Inference Exception</h3>
-                   <p className="text-xs text-red-500/80 mb-4 font-mono w-full max-w-sm truncate">{errorText}</p>
+                   <h3 className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">Analysis Error</h3>
+                   <p className="text-xs text-red-500/80 mb-4 font-mono w-full max-w-sm truncate" title={errorText}>{errorText}</p>
                    <button onClick={(e) => { e.stopPropagation(); setUploadState("idle"); setFile(null); }} className="px-4 py-1.5 text-xs font-semibold bg-background border border-border rounded-md hover:bg-muted">
                      Restart Job
                    </button>
@@ -182,9 +251,9 @@ export default function UploadPage() {
       {/* Right Area: ML Pipeline Trace Terminal */}
       <AnimatedContainer animation="slide-up" delay={0.2} className="w-full xl:w-80 shrink-0">
           <div className="glass-panel h-full flex flex-col rounded-lg border border-border">
-             <div className="h-10 border-b border-border bg-muted/50 flex items-center px-4 shrink-0">
+             <div className="h-10 border-b border-border bg-muted/50 flex items-center px-4 shrink-0" title="Shows the current stage of Deep Learning evaluation">
                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                 <Terminal className="w-3.5 h-3.5" /> Pipeline Telemetry Trace
+                 <Terminal className="w-3.5 h-3.5" /> Pipeline Status
                </h3>
              </div>
 
@@ -236,7 +305,7 @@ export default function UploadPage() {
 
                {uploadState === "idle" && (
                  <div className="pt-4 text-[10px] font-mono text-muted-foreground border-t border-border italic">
-                   &gt; Awaiting standard binary input...
+                   &gt; Awaiting document upload...
                  </div>
                )}
              </div>

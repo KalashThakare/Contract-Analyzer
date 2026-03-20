@@ -93,6 +93,36 @@ export const analyzeDocument = async (
   return transformAnalysisResponse(raw);
 };
 
+/* ─── LLM Phase 1: Clause-by-clause analysis ───────────── */
+export const analyzeDocumentLlmClauses = async (
+  contractId: string,
+): Promise<AnalysisResult> => {
+  if (USE_MOCK) {
+    return new Promise((resolve) =>
+      setTimeout(() => resolve(MOCK_ANALYSIS_RESULT), 4000),
+    );
+  }
+  const raw = await post<Record<string, unknown>>(
+    `/api/v1/contracts/${contractId}/llm-analyze-clauses`,
+  );
+  return transformAnalysisResponse(raw);
+};
+
+/* ─── LLM Phase 2: Missing clause detection ────────────── */
+export const analyzeDocumentLlmMissing = async (
+  contractId: string,
+): Promise<AnalysisResult> => {
+  if (USE_MOCK) {
+    return new Promise((resolve) =>
+      setTimeout(() => resolve(MOCK_ANALYSIS_RESULT), 4000),
+    );
+  }
+  const raw = await post<Record<string, unknown>>(
+    `/api/v1/contracts/${contractId}/llm-analyze-missing`,
+  );
+  return transformAnalysisResponse(raw);
+};
+
 /* ─── Get existing analysis ──────────────────────────────── */
 export const getContract = async (
   contractId: string,

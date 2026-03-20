@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Legal Contract Analyzer",
-  description: "Enterprise-grade AI legal document analysis platform.",
+  title: "Multi-Model DL Legal Analyzer",
+  description: "Enterprise-grade Deep Learning legal document analysis platform.",
 };
 
 export default function RootLayout({
