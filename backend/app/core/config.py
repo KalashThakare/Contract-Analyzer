@@ -29,8 +29,22 @@ class Settings(BaseSettings):
 
     HF_REPO_ID: str = "AnkushRaheja/Legal-Document-Analyzer"
     HF_SUBFOLDER: str = "sklearn-models"
+    HF_MULTITASK_REPO_ID: str = "AnkushRaheja/Cls_Class_Risk_Scr"
 
-    NER_MODEL: str = "Devil1710/Legal-Document-Analyzer-NER"
+    NER_MODEL: str = "Devil1710/Legal-NER-v2"
+
+    LLM_ENABLED: bool = True
+    LLM_PROVIDER: str = "ollama"  # ollama | huggingface
+    OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
+    OLLAMA_MODEL: str = "llama3"
+    OLLAMA_API_KEY: str | None = None
+    HF_LLM_MODEL: str = "HuggingFaceH4/zephyr-7b-beta"
+    HF_TOKEN: str | None = None
+    LLM_TIMEOUT_SECONDS: float = 900.0      # 15 min total — Ollama can be slow
+    LLM_READ_TIMEOUT_SECONDS: float = 600.0  # 10 min read timeout per chunk
+    LLM_CONNECT_TIMEOUT_SECONDS: float = 15.0
+    LLM_MAX_TERMS_PER_CLAUSE: int = 5
+    LLM_CHUNK_SIZE: int = 3  # Smaller chunks = faster per-request, less timeout risk
 
     MAX_UPLOAD_SIZE_MB: int = 20
     UPLOAD_DIR: Path = Path("uploads")

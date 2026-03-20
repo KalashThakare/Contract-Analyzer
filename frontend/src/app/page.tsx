@@ -26,7 +26,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* Hero Section (Vercel/Linear tight typography style) */}
+      {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 sm:px-12 max-w-5xl mx-auto flex flex-col items-center text-center">
         
         <AnimatedContainer animation="slide-up">
@@ -35,17 +35,17 @@ export default function LandingPage() {
                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-50"></span>
                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
              </span>
-             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Inference Kernel 4.2 Deployed</span>
+             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Multi-Model DL Pipeline Active</span>
            </div>
            
            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground leading-[1.1] mb-6">
               Contract Intelligence.<br/>
-              <span className="text-muted-foreground">Without the Liability.</span>
+              <span className="text-muted-foreground">Driven by Deep Learning.</span>
            </h1>
            
            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-10">
-              Aethel is a zero-retention semantic parser designed for massive legal ontologies. We compress thousands of hours of manual due diligence into programmatic, deterministic API telemetry.
-           </p>
+              A hybrid inference engine fusing specialized Deep Learning (DL) models—specifically fine-tuned Legal-BERT architectures for deterministic structured extraction—with LLMs for deep semantic reasoning.
+            </p>
 
            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
              <Link href="/dashboard" className="w-full sm:w-auto px-5 py-2.5 bg-foreground text-background text-sm font-semibold rounded-md border border-transparent hover:bg-foreground/90 transition-all flex items-center justify-center gap-2 group">
@@ -58,7 +58,7 @@ export default function LandingPage() {
            </div>
         </AnimatedContainer>
         
-        {/* Abstract Data Representation (Not a glowing mockup, a stark wireframe) */}
+        {/* Abstract Data Representation */}
         <AnimatedContainer animation="fade-in" delay={0.2} className="w-full mt-24 border border-border rounded-lg bg-card shadow-sm overflow-hidden flex flex-col text-left">
            <div className="h-10 bg-muted/30 border-b border-border flex items-center gap-3 px-4">
               <div className="flex gap-1.5">
@@ -73,17 +73,17 @@ export default function LandingPage() {
            
            <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-6 font-mono text-xs">
               <div className="space-y-3 col-span-2">
-                 <div className="text-muted-foreground">&gt; Initializing RoBERTa regression payload...</div>
-                 <div className="text-primary">&gt; Extracting semantic nodes... 142 clauses found.</div>
+                 <div className="text-muted-foreground">&gt; Initializing Multi-Task Legal-BERT DL payload...</div>
+                 <div className="text-primary">&gt; Extracting semantic nodes... clauses parsed successfully.</div>
                  <div className="space-y-2 pl-4 border-l border-border mt-3">
-                    <div className="flex justify-between max-w-xs"><span className="text-foreground">Node 001 [Termination]</span> <span className="text-red-500">0.98 RISK</span></div>
-                    <div className="flex justify-between max-w-xs"><span className="text-foreground">Node 014 [Indemnity]</span> <span className="text-amber-500">0.65 RISK</span></div>
-                    <div className="flex justify-between max-w-xs"><span className="text-foreground">Node 042 [Venue]</span> <span className="text-emerald-500">0.12 RISK</span></div>
+                    <div className="flex justify-between max-w-xs"><span className="text-foreground">Node 001 [Indemnification]</span> <span className="text-red-500">82.14 RISK</span></div>
+                    <div className="flex justify-between max-w-xs"><span className="text-foreground">Node 014 [Liability]</span> <span className="text-amber-500">54.65 RISK</span></div>
+                    <div className="flex justify-between max-w-xs"><span className="text-foreground">Node 042 [Severability]</span> <span className="text-emerald-500">12.08 RISK</span></div>
                  </div>
               </div>
               <div className="flex flex-col gap-2">
-                 <div className="bg-muted p-2 rounded border border-border"><span className="text-muted-foreground block text-[9px] uppercase">Processing Time</span><span className="text-foreground font-bold">128ms</span></div>
-                 <div className="bg-muted p-2 rounded border border-border"><span className="text-muted-foreground block text-[9px] uppercase">Similarity Deviance</span><span className="text-foreground font-bold">1.4%</span></div>
+                 <div className="bg-muted p-2 rounded border border-border"><span className="text-muted-foreground block text-[9px] uppercase">Fast DL Pipeline</span><span className="text-foreground font-bold">~3.5s Avg</span></div>
+                 <div className="bg-muted p-2 rounded border border-border"><span className="text-muted-foreground block text-[9px] uppercase">LLM Timeout</span><span className="text-foreground font-bold">600s</span></div>
               </div>
            </div>
         </AnimatedContainer>
@@ -94,34 +94,34 @@ export default function LandingPage() {
          <div className="max-w-5xl mx-auto px-6 lg:px-12">
             
             <AnimatedContainer animation="fade-in" className="mb-12">
-               <h2 className="text-sm font-bold text-foreground mb-2">Core Infrastructure</h2>
-               <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">Deterministic pipelines built for legal engineering teams. Zero hallucinations. Predictable JSON arrays.</p>
+               <h2 className="text-sm font-bold text-foreground mb-2">Deep Learning Infrastructure</h2>
+               <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">A highly specialized multi-staged DL pipeline built for legal due diligence. It fuses fine-tuned DL BERT architectures operating on proprietary legal datasets for structured extraction, alongside LLMs for natural language reasoning.</p>
             </AnimatedContainer>
 
             <AnimatedContainer animation="slide-up" staggerChildren={0.05} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                
                <div className="p-5 bg-card border border-border rounded-lg shadow-sm">
-                  <Database className="w-5 h-5 text-muted-foreground mb-4" strokeWidth={1.5} />
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Entity Resolution</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">Isolate organizations, fiscal constraints, and temporal variables via BERT-NER.</p>
+                  <AlertTriangle className="w-5 h-5 text-muted-foreground mb-4" strokeWidth={1.5} />
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Multi-Task Classification</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">Powered by a <span className="font-mono bg-muted px-1 py-0.5 rounded">Multi-Task Legal-BERT</span> DL model fine-tuned to simultaneously classify clause types and compute statistical risk liability.</p>
                </div>
 
                <div className="p-5 bg-card border border-border rounded-lg shadow-sm">
                   <Shield className="w-5 h-5 text-muted-foreground mb-4" strokeWidth={1.5} />
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Baseline Diffing</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">Sentence-BERT embedding distance mapping against custom corporate repositories.</p>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Unfair Clause Detection</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">Runs an <span className="font-mono bg-muted px-1 py-0.5 rounded">Unfairness Detection DL BERT</span> to strictly isolate asymmetric and commercially unviable obligations.</p>
                </div>
 
                <div className="p-5 bg-card border border-border rounded-lg shadow-sm">
-                  <AlertTriangle className="w-5 h-5 text-muted-foreground mb-4" strokeWidth={1.5} />
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Liability Regression</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">Calculate continuous risk multipliers using localized SHAP token explanations.</p>
+                  <Database className="w-5 h-5 text-muted-foreground mb-4" strokeWidth={1.5} />
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Entity Extraction (NER)</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">Using a specialized <span className="font-mono bg-muted px-1 py-0.5 rounded">Legal-NER DL Model</span> to extract high-risk parties, temporal variables, and fiscal constraints.</p>
                </div>
 
                <div className="p-5 bg-card border border-border rounded-lg shadow-sm">
                   <MonitorPlay className="w-5 h-5 text-muted-foreground mb-4" strokeWidth={1.5} />
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Stateless Audit</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">Air-gapped VPC architecture. We hold zero persistent memory of your uploaded binaries.</p>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Deep Semantic Review</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">Offloads complex subtext analysis and missing assertion detection to a <span className="font-mono bg-muted px-1 py-0.5 rounded">LLM</span></p>
                </div>
 
             </AnimatedContainer>

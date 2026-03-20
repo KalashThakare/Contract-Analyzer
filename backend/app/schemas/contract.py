@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, computed_field
 
@@ -21,11 +22,16 @@ class ClauseDetail(BaseModel):
     index: int
     text: str
     clause_type: str | None = None
+    classification_confidence: float | None = None
     is_unfair: bool | None = None
     unfair_confidence: float | None = None
     risk_score: float | None = None
     similarity_score: float | None = None
     matched_template: str | None = None
+    explanation: str | None = None
+    top_risk_terms: list[str] = []
+    recommendation: str | None = None
+    ai_source: str | None = None
     entities: list[EntityDetail] = []
 
     @computed_field
@@ -44,6 +50,6 @@ class ContractAnalysisResponse(BaseModel):
     contract_id: str
     filename: str
     clauses: list[ClauseDetail]
-    missing_clauses: list[str]
+    missing_clauses: list[Any] = []
     overall_risk_score: float
     analyzed_at: datetime

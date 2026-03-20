@@ -36,7 +36,7 @@ export default function ExplanationPanel({
           <MessageSquare className="w-5 h-5 text-slate-300" />
         </div>
         <p className="text-sm text-center text-slate-400">
-          Select a clause to view the AI explanation
+          Select a clause to view the LLM explanation
         </p>
       </div>
     );
@@ -69,10 +69,7 @@ export default function ExplanationPanel({
         </div>
         <div className="flex items-start gap-2 shrink-0">
           <div className="text-right">
-            <div
-              className="text-2xl font-bold tabular-nums"
-              style={{ color }}
-            >
+            <div className="text-2xl font-bold tabular-nums" style={{ color }}>
               {clause.risk_score}
             </div>
             <div className="text-xs text-slate-400">/ 100</div>
@@ -128,8 +125,19 @@ export default function ExplanationPanel({
               {clause.explanation ?? "No explanation available."}
             </p>
           </div>
+          {clause.recommendation && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+              <p className="text-xs font-semibold text-blue-700 mb-1">
+                Recommended Action
+              </p>
+              <p className="text-sm text-slate-800 leading-relaxed">
+                {clause.recommendation}
+              </p>
+            </div>
+          )}
           <p className="text-xs text-slate-400 mt-1.5">
-            Groq · Llama 3.1 &nbsp;·&nbsp; Not legal advice
+            {clause.ai_source ? `DL Source: ${clause.ai_source} · ` : ""}
+            Not legal advice
           </p>
         </div>
 

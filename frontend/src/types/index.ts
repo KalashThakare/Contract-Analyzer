@@ -23,6 +23,10 @@ export interface Clause {
   entities: ClauseEntities;
   explanation: string | null;
   top_risk_terms: string[];
+  recommendation?: string | null;
+  ai_source?: string | null;
+  similarity_score?: number | null;
+  matched_template?: string | null;
 }
 
 // ─── Summary ───────────────────────────────────────────────────
@@ -32,6 +36,14 @@ export interface Summary {
   high_risk_count: number;
   medium_risk_count: number;
   low_risk_count: number;
+}
+
+// ─── Missing Clause ───────────────────────────────────────────
+export interface MissingClause {
+  name: string;
+  why_it_matters: string;
+  risk_level: RiskLevel | string;
+  example_wording: string;
 }
 
 // ─── Document meta ────────────────────────────────────────────
@@ -49,6 +61,7 @@ export interface AnalysisResult {
   summary: Summary;
   entities: DocumentEntities;
   clauses: Clause[];
+  missing_clauses: MissingClause[];
 }
 
 // ─── Upload info ──────────────────────────────────────────────

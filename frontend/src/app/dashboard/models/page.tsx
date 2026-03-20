@@ -10,7 +10,7 @@ const MODELS = [
     name: "Clause Classifier",
     type: "Transformer Sequence",
     icon: LibraryBig,
-    architecture: "Legal-BERT (base-uncased)",
+    architecture: "Legal-BERT",
     confidence: "94.2% F1",
     desc: "Autonomous partitioning of unstructured paragraphs into 100+ recognized ontological categories.",
     examples: ["\"Either party may terminate...\" → Termination"]
@@ -20,7 +20,7 @@ const MODELS = [
     name: "Hazard Regression",
     type: "Dense Neural Net",
     icon: Cpu,
-    architecture: "RoBERTa + MLP Head",
+    architecture: "Legal-BERT (Multi-Task)",
     confidence: "0.89 R²",
     desc: "Maps token embeddings to a continuous 0-100 risk scale referencing historical contract liabilities.",
     examples: ["\"unlimited liability\" → 92/100 (High Risk)"]
@@ -30,7 +30,7 @@ const MODELS = [
     name: "Entity Ontology (NER)",
     type: "Token Classification",
     icon: Tag,
-    architecture: "BERT-NER (bert-base)",
+    architecture: "Legal-BERT NER",
     confidence: "91.8% CRX",
     desc: "Recognizes explicitly named organizations, chronological boundaries, and fiscal thresholds dynamically.",
     examples: ["\"Acme Corp\" → Organization"]
@@ -40,7 +40,7 @@ const MODELS = [
     name: "Template Verification",
     type: "Vector Db Inference",
     icon: Share2,
-    architecture: "Sentence-BERT (all-MiniLM)",
+    architecture: "Legal-BERT Embeddings",
     confidence: "Cos Sim Vector",
     desc: "Embeds ingestion text to 384-dimensional space computing distances against corporate baselines.",
     examples: ["Sim: 0.98 → Validated Offset"]
@@ -56,7 +56,7 @@ export default function ModelInsights() {
            Inference Topology
         </h1>
         <p className="text-xs text-muted-foreground mt-1 max-w-xl">
-          Architectural mappings of the specialized ML sub-agents operating within the inference cluster. 
+          Architectural mappings of the specialized DL sub-agents operating within the inference cluster. 
         </p>
       </AnimatedContainer>
 
@@ -101,11 +101,11 @@ export default function ModelInsights() {
             </table>
          </div>
          
-         <div className="mt-4 flex items-center gap-2 p-3 border border-border bg-background rounded-md shadow-sm">
+         {/* <div className="mt-4 flex items-center gap-2 p-3 border border-border bg-background rounded-md shadow-sm">
            <BrainCircuit className="w-4 h-4 text-primary shrink-0" />
            <p className="text-xs text-muted-foreground font-mono w-full">FastAPI inference orchestration running on isolated asynchronous pods. Zero data retention policies enabled per HIPAA / SOC2 standards.</p>
            <button className="shrink-0 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest hover:text-primary transition-colors">Docs <ExternalLink className="w-3 h-3" /></button>
-         </div>
+         </div> */}
       </AnimatedContainer>
     </div>
   );
