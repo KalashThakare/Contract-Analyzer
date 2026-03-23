@@ -10,17 +10,22 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Separate connect vs. read timeout:
-# connect: how long to wait for TCP handshake (should be very short)
-# read: how long to wait for the LLM to stream back its response (can be huge)
-_LLM_TIMEOUT = httpx.Timeout(
+_OLLAMA_TIMEOUT = httpx.Timeout(
     connect=settings.LLM_CONNECT_TIMEOUT_SECONDS,
     read=settings.LLM_READ_TIMEOUT_SECONDS,
     write=30.0,
     pool=10.0,
 )
 
-# Type alias for the on_chunk_done callback
+_GROQ_TIMEOUT = httpx.Timeout(
+    connect=10.0,
+    read=60.0, 
+    write=15.0,
+    pool=10.0,
+)
+
+_HF_TIMEOUT = _OLLAMA_TIMEOUT  
+
 OnChunkDone = Callable[[dict[int, dict[str, Any]]], Awaitable[None]] | None
 
 
@@ -29,10 +34,16 @@ class LLMAnalysisService:
         self.enabled = settings.LLM_ENABLED
         self.provider = settings.LLM_PROVIDER.lower().strip()
 
+
     @staticmethod
     def _safe_json_extract(text: str) -> dict[str, Any] | None:
+        """Try to extract a valid JSON object from raw LLM text."""
         if not text:
             return None
+        
+        import re
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
         try:
             data = json.loads(text)
             if isinstance(data, dict):
@@ -55,20 +66,40 @@ class LLMAnalysisService:
 
         return None
 
+    def _get_chunk_size(self) -> int:
+        """Return the per-provider chunk size."""
+        if self.provider == "groq":
+            return settings.GROQ_CHUNK_SIZE
+        elif self.provider == "ollama":
+            return settings.OLLAMA_CHUNK_SIZE
+        return settings.LLM_CHUNK_SIZE  
+    
+
     @staticmethod
     def _build_chunk_prompt(
         document_context: dict[str, Any],
         clauses: list[dict[str, Any]],
     ) -> str:
+        """
+        Build the clause-analysis prompt.
+
+        The prompt is structured so that BOTH Ollama-class models (DeepSeek R1,
+        Llama 3) and Groq-hosted models (deepseek-r1-distill-llama-70b,
+        llama-3.3-70b-versatile) respond reliably with valid JSON.
+        """
         payload = {
             "document_context": document_context,
             "clauses": clauses,
             "instructions": {
                 "persona": "You are an elite Senior Corporate Attorney and Contract Risk Analyst.",
                 "style": "Highly clinical, strictly objective, legally precise, and exceptionally concise.",
-                "task": "Perform deeper semantic evaluation of potentially dangerous contractual clauses flagged by our initial ML classifier.",
+                "task": (
+                    "Perform deeper semantic evaluation of potentially dangerous "
+                    "contractual clauses flagged by our initial DL classifier."
+                ),
                 "strict_rules": [
                     "Output exclusively valid, parsable JSON. Absolutely NO markdown wrappers like ```json.",
+                    "Do NOT include any chain-of-thought, reasoning, or commentary outside the JSON object.",
                     "You MUST return a JSON entry for EVERY clause index provided. Do not skip any.",
                     "Base all analysis entirely on provided text. Do not invent entities, jurisdictions, or assumptions.",
                     "The top_risk_terms MUST be exact, verbatim substrings extracted directly from the clause text.",
@@ -93,9 +124,53 @@ class LLMAnalysisService:
         }
 
         return (
-            "Return strictly raw JSON. Do not include markdown formatting or commentary.\n"
+            "Return strictly raw JSON. Do not include markdown formatting, commentary, or chain-of-thought.\n"
             + json.dumps(payload, ensure_ascii=False)
         )
+
+    @staticmethod
+    def _build_missing_clauses_prompt(clauses: list[dict[str, Any]]) -> str:
+        """
+        Build the missing-clause detection prompt.
+
+        Works for both Ollama cloud models and Groq-hosted models.
+        """
+        full_text = "\n\n".join(c.get("text", "") for c in clauses)
+
+        payload = {
+            "instructions": {
+                "persona": "You are a Senior Corporate Attorney.",
+                "task": (
+                    "Read the following contract clauses and identify up to 5-7 CRITICAL "
+                    "missing legal clauses (Missing Assertions) that should normally be "
+                    "present in a contract of this kind but are absent."
+                ),
+                "rules": [
+                    "Return ONLY parseable JSON. No markdown. No chain-of-thought or reasoning text.",
+                    "Generate a 'missing_clauses' array containing max 5-7 objects.",
+                    "Each object MUST have 'name' (string), 'why_it_matters' (string), "
+                    "'risk_level' (string: Critical, High, or Medium), and 'example_wording' (string).",
+                ],
+                "expected_schema": {
+                    "missing_clauses": [
+                        {
+                            "name": "Clause Name",
+                            "why_it_matters": "Reason",
+                            "risk_level": "High",
+                            "example_wording": "Example text",
+                        }
+                    ]
+                },
+            },
+            "contract_text": full_text[:40000],  # clamp to avoid extreme context length
+        }
+
+        return (
+            "Return strictly raw JSON. No markdown wrappers. No chain-of-thought.\n"
+            + json.dumps(payload, ensure_ascii=False)
+        )
+
+    # LLM Provider Calls
 
     async def _call_ollama(self, prompt: str) -> str:
         url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/generate"
@@ -113,7 +188,7 @@ class LLMAnalysisService:
 
         import certifi
         async with httpx.AsyncClient(
-            timeout=_LLM_TIMEOUT,
+            timeout=_OLLAMA_TIMEOUT,
             verify=certifi.where(),
         ) as client:
             response = await client.post(url, headers=headers, json=body)
@@ -127,6 +202,65 @@ class LLMAnalysisService:
             data = response.json()
             logger.info("Ollama response keys: %s", list(data.keys()))
             return str(data.get("response", ""))
+
+    async def _call_groq(self, prompt: str) -> str:
+        if not settings.GROQ_API_KEY:
+            raise RuntimeError(
+                "GROQ_API_KEY is not set in .env. "
+                "Get one free at https://console.groq.com"
+            )
+
+        url = f"{settings.GROQ_BASE_URL.rstrip('/')}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        body = {
+            "model": settings.GROQ_MODEL,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an elite Senior Corporate Attorney and Contract Risk Analyst. "
+                        "You MUST respond with strictly valid JSON. Do not include any markdown, "
+                        "commentary, chain-of-thought, or explanation outside the JSON object."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+            "temperature": settings.GROQ_TEMPERATURE,
+            "max_tokens": settings.GROQ_MAX_TOKENS,
+            "response_format": {"type": "json_object"},
+        }
+
+        async with httpx.AsyncClient(timeout=_GROQ_TIMEOUT) as client:
+            response = await client.post(url, headers=headers, json=body)
+            if response.status_code >= 400:
+                logger.error(
+                    "Groq HTTP %s: %s",
+                    response.status_code,
+                    response.text[:2000],
+                )
+            response.raise_for_status()
+            data = response.json()
+
+        choices = data.get("choices", [])
+        if choices and isinstance(choices, list):
+            message = choices[0].get("message", {})
+            content = message.get("content", "")
+            usage = data.get("usage", {})
+            logger.info(
+                "Groq response: model=%s, tokens_in=%s, tokens_out=%s",
+                data.get("model", "?"),
+                usage.get("prompt_tokens", "?"),
+                usage.get("completion_tokens", "?"),
+            )
+            return str(content)
+
+        return ""
 
     async def _call_huggingface(self, prompt: str) -> str:
         url = f"https://api-inference.huggingface.co/models/{settings.HF_LLM_MODEL}"
@@ -143,7 +277,7 @@ class LLMAnalysisService:
             },
         }
 
-        async with httpx.AsyncClient(timeout=_LLM_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=_HF_TIMEOUT) as client:
             response = await client.post(url, headers=headers, json=body)
             if response.status_code >= 400:
                 logger.error(
@@ -167,19 +301,22 @@ class LLMAnalysisService:
         return ""
 
     async def _call_llm(self, prompt: str) -> str:
+        """Route the prompt to the active provider based on LLM_PROVIDER."""
         if self.provider == "ollama":
             return await self._call_ollama(prompt)
+        elif self.provider == "groq":
+            return await self._call_groq(prompt)
         elif self.provider == "huggingface":
             return await self._call_huggingface(prompt)
         logger.warning("Unsupported LLM provider '%s'", self.provider)
         return ""
+
 
     async def _process_chunk(
         self,
         document_context: dict[str, Any],
         chunk: list[dict[str, Any]],
     ) -> dict[int, dict[str, Any]]:
-        """Send one chunk to the LLM and parse clause-level results."""
         prompt = self._build_chunk_prompt(document_context, chunk)
         max_terms = max(1, settings.LLM_MAX_TERMS_PER_CLAUSE)
 
@@ -233,24 +370,16 @@ class LLMAnalysisService:
         clauses: list[dict[str, Any]],
         on_chunk_done: OnChunkDone = None,
     ) -> dict[int, dict[str, Any]]:
-        """
-        Analyse clauses by splitting into fixed-size chunks and calling the LLM
-        sequentially.
-
-        After each chunk succeeds, `on_chunk_done(partial_results)` is awaited if
-        provided — this lets the caller persist partial results immediately so the
-        frontend can poll and show progressive updates.
-        """
         if not self.enabled or not clauses:
             return {}
 
+        chunk_size = self._get_chunk_size()
         priority_clauses = clauses
-        chunk_size = settings.LLM_CHUNK_SIZE
 
         logger.info(
-            "LLM chunked analysis: %d total, %d priority, chunk_size=%d",
+            "LLM chunked analysis [%s]: %d total, chunk_size=%d",
+            self.provider,
             len(clauses),
-            len(priority_clauses),
             chunk_size,
         )
 
@@ -269,66 +398,41 @@ class LLMAnalysisService:
                     len(merged),
                 )
 
-                # Persist partial results immediately after each chunk
                 if on_chunk_done is not None:
                     try:
                         await on_chunk_done(dict(merged))
                     except Exception:
                         logger.exception("on_chunk_done callback failed — continuing")
 
-            # Small delay between chunks to avoid rate-limit hammering
             if start + chunk_size < len(priority_clauses):
-                await asyncio.sleep(1.5)
+                delay = 0.5 if self.provider == "groq" else 1.5
+                await asyncio.sleep(delay)
 
-        logger.info("LLM clause analysis complete: %d clauses annotated", len(merged))
+        logger.info(
+            "LLM clause analysis complete [%s]: %d clauses annotated",
+            self.provider,
+            len(merged),
+        )
         return merged
 
     async def generate_missing_clauses(self, clauses: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Evaluate the entire contract text to find missing structural clauses (max 5-7)."""
         if not self.enabled or not clauses:
             return []
-            
-        full_text = "\n\n".join(c.get("text", "") for c in clauses)
-        
-        payload = {
-            "instructions": {
-                "persona": "You are a Senior Corporate Attorney.",
-                "task": "Read the following contract clauses and identify up to 5-7 CRITICAL missing legal clauses (Missing Assertions) that should normally be present in a contract of this kind but are absent.",
-                "rules": [
-                    "Return ONLY parseable JSON.",
-                    "Generate a 'missing_clauses' array containing max 5-7 objects.",
-                    "Each object MUST have 'name' (string), 'why_it_matters' (string), 'risk_level' (string: Critical, High, or Medium), and 'example_wording' (string)."
-                ],
-                "expected_schema": {
-                    "missing_clauses": [
-                        {
-                            "name": "Clause Name",
-                            "why_it_matters": "Reason",
-                            "risk_level": "High",
-                            "example_wording": "Example text"
-                        }
-                    ]
-                }
-            },
-            "contract_text": full_text[:40000]  # clamp to avoid extreme context length
-        }
-        
-        prompt = (
-            "Return strictly raw JSON. No markdown wrappers.\n"
-            + json.dumps(payload, ensure_ascii=False)
-        )
-        
+
+        prompt = self._build_missing_clauses_prompt(clauses)
+
         try:
-            logger.info("Requesting missing clauses from LLM...")
+            logger.info("Requesting missing clauses from LLM [%s]...", self.provider)
             raw_text = await self._call_llm(prompt)
             parsed = self._safe_json_extract(raw_text)
-            
+
             if parsed and "missing_clauses" in parsed:
                 mc = parsed["missing_clauses"]
                 if isinstance(mc, list):
-                    logger.info("LLM generated %d missing clauses.", len(mc))
+                    logger.info("LLM [%s] generated %d missing clauses.", self.provider, len(mc))
                     return mc[:7]
         except Exception as e:
-            logger.exception("Failed to generate missing clauses: %s", e)
-            
+            logger.exception("Failed to generate missing clauses [%s]: %s", self.provider, e)
+
         return []
