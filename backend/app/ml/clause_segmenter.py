@@ -1,132 +1,136 @@
-"""Clause Segmenter — splits raw PDF text into individual legal clauses."""
+"""Clause segmenter backed by HF model Devil1710/Legal-Clause-Segmenter."""
 
-import re
 import logging
+import re
+from functools import lru_cache
 from typing import List
 
-logger = logging.getLogger(__name__)
+import torch
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-# keywords that typically start a new clause
-CLAUSE_KEYWORDS = [
-    "WHEREAS", "NOW THEREFORE", "IN WITNESS WHEREOF",
-    "Indemnification", "Confidentiality", "Termination",
-    "Governing Law", "Jurisdiction", "Arbitration",
-    "Intellectual Property", "Non-Compete", "Non-Solicitation",
-    "Force Majeure", "Limitation of Liability", "Warranty",
-    "Representations", "Covenants", "Conditions",
-    "Payment", "Fees", "Expenses", "Notices",
-]
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
 
 MIN_WORDS = 10
-MAX_WORDS = 300
+MAX_WORDS = 320
+MIN_SENTENCE_CHARS = 6
+DEFAULT_BOUNDARY_THRESHOLD = 0.65
 
 
-def segment_clauses(raw_text: str) -> List[str]:
-    
-    if not raw_text or len(raw_text.strip()) < 50:
-        logger.warning("Text too short to segment: %d chars", len(raw_text))
-        return []
-
-    text = _clean_text(raw_text)
-
-    clauses = _split_by_numbered_sections(text)
-
-    if len(clauses) < 3:
-        clauses = _split_by_keywords(text)
-
-    if len(clauses) < 3:
-        clauses = _split_by_sentences(text)
-
-    clauses = _filter_clauses(clauses)
-
-    logger.info("Segmented %d clauses from %d chars", len(clauses), len(raw_text))
-    return clauses
+@lru_cache(maxsize=1)
+def _load_segmenter(model_id: str):
+    """Load and cache tokenizer + segmenter model from Hugging Face."""
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
+        model = AutoModelForSequenceClassification.from_pretrained(model_id)
+        model.eval()
+        model.to("cpu")
+        logger.info("Clause segmenter loaded from %s", model_id)
+        return tokenizer, model
+    except Exception as exc:
+        logger.error("Failed to load clause segmenter '%s': %s", model_id, exc)
+        return None, None
 
 
 def _clean_text(text: str) -> str:
-    """Remove headers, footers, page numbers and extra whitespace."""
-    # remove page numbers like "Page 1 of 10"
-    text = re.sub(r'Page\s+\d+\s+of\s+\d+', '', text, flags=re.IGNORECASE)
-    # remove standalone numbers (page numbers)
-    text = re.sub(r'^\s*\d+\s*$', '', text, flags=re.MULTILINE)
-    # collapse multiple newlines
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    # collapse multiple spaces
-    text = re.sub(r' {2,}', ' ', text)
+    text = re.sub(r"Page\s+\d+\s+of\s+\d+", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"^\s*\d+\s*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r"\s+", " ", text)
     return text.strip()
 
 
-def _split_by_numbered_sections(text: str) -> List[str]:
-    """Split on numbered section headers like '1.', '2.', 'Section 1'."""
-    # matches: "1.", "1.1", "Section 1", "Article 2", "SECTION 1"
-    pattern = r'(?:^|\n)(?:Section|Article|SECTION|ARTICLE)?\s*\d+(?:\.\d+)*\.?\s+[A-Z]'
-
-    positions = [m.start() for m in re.finditer(pattern, text, re.MULTILINE)]
-
-    if len(positions) < 2:
-        return []
-
-    clauses = []
-    for i, start in enumerate(positions):
-        end = positions[i + 1] if i + 1 < len(positions) else len(text)
-        clause = text[start:end].strip()
-        if clause:
-            clauses.append(clause)
-
-    return clauses
+def _split_sentences(text: str) -> List[str]:
+    """Lightweight sentence split to avoid external runtime deps."""
+    parts = re.split(r"(?<=[.!?])\s+|\n+", text)
+    return [p.strip() for p in parts if len(p.strip()) >= MIN_SENTENCE_CHARS]
 
 
-def _split_by_keywords(text: str) -> List[str]:
-    """Split on legal clause-starting keywords."""
-    pattern = '|'.join(re.escape(k) for k in CLAUSE_KEYWORDS)
-    positions = [m.start() for m in re.finditer(pattern, text)]
+def _resolve_boundary_label_id(model) -> int:
+    labels = {int(k): str(v).lower() for k, v in model.config.id2label.items()}
 
-    if len(positions) < 2:
-        return []
+    # Prefer explicit label naming if present in model config.
+    for idx, name in labels.items():
+        if any(key in name for key in ("boundary", "split", "break", "new_clause")):
+            return idx
 
-    clauses = []
-    for i, start in enumerate(positions):
-        end = positions[i + 1] if i + 1 < len(positions) else len(text)
-        clause = text[start:end].strip()
-        if clause:
-            clauses.append(clause)
+    # Fallback commonly used by binary classifiers.
+    if 1 in labels:
+        return 1
 
-    return clauses
+    return sorted(labels.keys())[-1]
 
 
-def _split_by_sentences(text: str) -> List[str]:
-    """Fallback: split into sentence groups of roughly 50-150 words."""
-    sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', text)
-    clauses = []
-    current = []
-    current_words = 0
-
-    for sentence in sentences:
-        words = len(sentence.split())
-        if current_words + words > 150 and current:
-            clauses.append(' '.join(current))
-            current = [sentence]
-            current_words = words
-        else:
-            current.append(sentence)
-            current_words += words
-
-    if current:
-        clauses.append(' '.join(current))
-
-    return clauses
+def _predict_sentence_is_boundary(
+    sentence: str,
+    tokenizer,
+    model,
+    boundary_label_id: int,
+    threshold: float,
+) -> bool:
+    inputs = tokenizer(
+        sentence,
+        return_tensors="pt",
+        truncation=True,
+        max_length=128,
+        padding=True,
+    )
+    with torch.no_grad():
+        logits = model(**inputs).logits[0]
+    probs = torch.softmax(logits, dim=-1)
+    boundary_prob = float(probs[boundary_label_id].item())
+    return boundary_prob >= threshold
 
 
 def _filter_clauses(clauses: List[str]) -> List[str]:
-    """Remove clauses that are too short or too long."""
-    filtered = []
+    filtered: List[str] = []
     for clause in clauses:
         word_count = len(clause.split())
         if MIN_WORDS <= word_count <= MAX_WORDS:
             filtered.append(clause)
+    return filtered
+
+
+def segment_clauses(raw_text: str, threshold: float = DEFAULT_BOUNDARY_THRESHOLD) -> List[str]:
+    """Split raw contract text into clauses using the HF segmenter model."""
+    if not raw_text or len(raw_text.strip()) < 50:
+        logger.warning("Text too short to segment: %d chars", len(raw_text or ""))
+        return []
+
+    tokenizer, model = _load_segmenter(settings.CLAUSE_SEGMENTER_MODEL)
+    if tokenizer is None or model is None:
+        return []
+
+    text = _clean_text(raw_text)
+    sentences = _split_sentences(text)
+    if not sentences:
+        return []
+
+    boundary_label_id = _resolve_boundary_label_id(model)
+
+    clauses: List[str] = []
+    current_clause: List[str] = []
+    for sentence in sentences:
+        is_boundary = _predict_sentence_is_boundary(
+            sentence,
+            tokenizer,
+            model,
+            boundary_label_id,
+            threshold,
+        )
+
+        if is_boundary and current_clause:
+            clauses.append(" ".join(current_clause).strip())
+            current_clause = [sentence]
         else:
-            logger.debug(
-                "Filtered clause: %d words (min=%d, max=%d)",
-                word_count, MIN_WORDS, MAX_WORDS
-            )
+            current_clause.append(sentence)
+
+    if current_clause:
+        clauses.append(" ".join(current_clause).strip())
+
+    filtered = _filter_clauses(clauses)
+    logger.info("Segmented %d clauses from %d chars", len(filtered), len(raw_text))
     return filtered

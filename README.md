@@ -23,7 +23,7 @@ A full-stack deep learning application that analyzes legal contracts by classify
 
 | Member | Responsibilities |
 |--------|-----------------|
-| **Kalash Thakare** | Unfair clause detection (fine-tuned BERT binary classifier — `KalashT/unfair-clause-classifier`), backend architecture (FastAPI, database, API design), pipeline integration, clause segmentation engine |
+| **Kalash Thakare** | Unfair clause detection (fine-tuned BERT binary classifier — `KalashT/unfair-clause-classifier`), backend architecture (FastAPI, database, API design), pipeline integration, clause segmentation model integration |
 | **Gaurav Dongre** | Named Entity Recognition model (Legal-BERT fine-tuned on CUAD — `Devil1710/Legal-Document-Analyzer-NER`), entity extraction pipeline (IOB2 decoding, subword merging) |
 | **Jayesh Rajbhar** | Clause classifier (Legal-BERT fine-tuned on LEDGAR — `AnkushRaheja/Legal-Document-Analyzer`), risk scorer (TF-IDF + Ridge regression), sklearn baseline models | Frontend development (Next.js dashboard)
 
@@ -74,12 +74,10 @@ PDF Upload
     |   Extracts raw text and page count from the uploaded PDF.
     v
 [2] Clause Segmentation
-    |   Splits the raw text into individual legal clauses.
-    |   Strategy (in priority order):
-    |     a. Numbered sections  -- regex: "1.", "Section 2", "Article 3"
-    |     b. Legal keywords     -- "WHEREAS", "Indemnification", "Termination", etc.
-    |     c. Sentence grouping  -- fallback: groups sentences into 50-150 word blocks
-    |   Clauses outside 10-300 words are filtered out.
+    |   Model: Devil1710/Legal-Clause-Segmenter (BERT sequence classifier)
+    |   Splits the raw text into clause boundaries by classifying sentence-level
+    |   boundary candidates and grouping consecutive sentences into clauses.
+    |   Clauses outside 10-320 words are filtered out.
     v
 [3] Unfair Clause Detection (per clause)
     |   Model:  KalashT/unfair-clause-classifier (BERT)
@@ -188,6 +186,7 @@ Softmax -> argmax
 
 | Model | Type | Source | Task |
 |-------|------|--------|------|
+| `Devil1710/Legal-Clause-Segmenter` | BERT (Sequence Classification) | HuggingFace | Clause boundary detection / clause segmentation |
 | `KalashT/unfair-clause-classifier` | BERT (Sequence Classification) | HuggingFace | Binary unfair clause detection |
 | `Devil1710/Legal-Document-Analyzer-NER` | Legal-BERT (Token Classification) | HuggingFace | Named Entity Recognition (PARTY, DATE, AMOUNT, etc.) |
 | `AnkushRaheja/Legal-Document-Analyzer` | Legal-BERT (Sequence Classification) | HuggingFace | Clause type classification (100+ LEDGAR categories) |

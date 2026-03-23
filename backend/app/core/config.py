@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     HF_REPO_ID: str = "AnkushRaheja/Legal-Document-Analyzer"
     HF_SUBFOLDER: str = "sklearn-models"
     HF_MULTITASK_REPO_ID: str = "AnkushRaheja/Cls_Class_Risk_Scr"
+    CLAUSE_SEGMENTER_MODEL: str = "Devil1710/Legal-Clause-Segmenter"
 
     NER_MODEL: str = "Devil1710/Legal-NER-v2"
 

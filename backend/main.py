@@ -39,7 +39,7 @@ def _warmup_models():
     """
     Runs in a background daemon thread RIGHT AFTER FastAPI prints
     'Application startup complete.' so deployment probes never time out.
-    All four models are loaded and cached by lru_cache, so the first real
+    All five models are loaded and cached by lru_cache, so the first real
     request hits pre-warmed weights with zero cold-start delay.
     """
     _warmup_logger.info("Background warmup: starting model pre-loading...")
@@ -59,12 +59,17 @@ def _warmup_models():
         # 3. Multi-Task Legal-BERT (Clause Classification + Risk Regression)
         from app.ml.multitask_predictor import MultiTaskPredictor
         MultiTaskPredictor(settings.HF_MULTITASK_REPO_ID)
-        _warmup_logger.info("Warmup [3/4]: Multi-task Legal-BERT loaded.")
+        _warmup_logger.info("Warmup [3/5]: Multi-task Legal-BERT loaded.")
 
-        # 4. NER Token Extractor (Entity Ontology)
+        # 4. Clause Segmenter (boundary detector)
+        from app.ml.clause_segmenter import _load_segmenter
+        _load_segmenter(settings.CLAUSE_SEGMENTER_MODEL)
+        _warmup_logger.info("Warmup [4/5]: Clause segmenter loaded.")
+
+        # 5. NER Token Extractor (Entity Ontology)
         from app.ml.ner_extractor import _load_ner_model
         _load_ner_model(settings.NER_MODEL)
-        _warmup_logger.info("Warmup [4/4]: NER Legal-BERT loaded.")
+        _warmup_logger.info("Warmup [5/5]: NER Legal-BERT loaded.")
 
         _warmup_logger.info(
             "All ML models are fully cached in memory. Ready to serve requests."
