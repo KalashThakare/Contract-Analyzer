@@ -19,7 +19,6 @@ from app.services.unfair_clause_service import UnfairClauseService
 from app.services.similarity_service import SimilarityService
 from app.services.missing_clause_service import MissingClauseService
 from app.services.llm_analysis_service import LLMAnalysisService
-from app.ml.clause_segmenter import segment_clauses
 from app.ml.ner_extractor import extract_entities
 from app.ml.multitask_predictor import MultiTaskPredictor
 
@@ -43,10 +42,7 @@ class ContractService:
 
         processor = PDFProcessor()
         raw_text, page_count = processor.extract_text(content)
-        clauses = segment_clauses(raw_text)
-        # fallback to basic splitter if ML segmenter returns nothing
-        if not clauses:
-            clauses = processor.segment_clauses(raw_text)
+        clauses = processor.segment_clauses(raw_text)
 
         contract = Contract(
             filename=file.filename,
@@ -78,10 +74,7 @@ class ContractService:
         self.db.close()
 
         processor = PDFProcessor()
-        clauses_text = segment_clauses(contract_raw_text)
-        # fallback to basic splitter if ML segmenter returns nothing
-        if not clauses_text:
-            clauses_text = processor.segment_clauses(contract_raw_text)
+        clauses_text = processor.segment_clauses(contract_raw_text)
 
         unfair_svc = UnfairClauseService()
         similarity_svc = SimilarityService()
