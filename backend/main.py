@@ -4,13 +4,6 @@ import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-# ── Fix stale Conda SSL cert path ─────────────────────────────────────────────
-# Conda/Miniconda sets SSL_CERT_FILE to its own cacert.pem. If that environment
-# no longer exists (e.g. on a different machine or after reinstall), every HTTPS
-# request from Python (requests, httpx, HuggingFace Hub) crashes with:
-#   FileNotFoundError: [Errno 2] No such file or directory
-# The safest fix: detect a broken path and remove the variable so Python falls
-# back to the built-in certifi bundle automatically.
 _ssl_cert = os.environ.get("SSL_CERT_FILE", "")
 if _ssl_cert and not Path(_ssl_cert).is_file():
     logging.getLogger("startup").warning(
@@ -36,12 +29,6 @@ _warmup_logger = logging.getLogger("model_warmup")
 
 
 def _warmup_models():
-    """
-    Runs in a background daemon thread RIGHT AFTER FastAPI prints
-    'Application startup complete.' so deployment probes never time out.
-    All five models are loaded and cached by lru_cache, so the first real
-    request hits pre-warmed weights with zero cold-start delay.
-    """
     _warmup_logger.info("Background warmup: starting model pre-loading...")
 
     try:
@@ -62,9 +49,7 @@ def _warmup_models():
         _warmup_logger.info("Warmup [3/5]: Multi-task Legal-BERT loaded.")
 
         # 4. Clause Segmenter (boundary detector)
-        from app.ml.clause_segmenter import _load_segmenter
-        _load_segmenter(settings.CLAUSE_SEGMENTER_MODEL)
-        _warmup_logger.info("Warmup [4/5]: Clause segmenter loaded.")
+        
 
         # 5. NER Token Extractor (Entity Ontology)
         from app.ml.ner_extractor import _load_ner_model
@@ -86,10 +71,6 @@ async def lifespan(app: FastAPI):
     # Ensure DB tables exist — fast, no model loading here.
     Base.metadata.create_all(bind=engine)
 
-    # Kick off model loading in a background daemon thread RIGHT NOW,
-    # before we yield. The thread runs concurrently while uvicorn finishes
-    # its startup sequence and prints "Application startup complete."
-    # Models are in RAM long before any real user request arrives.
     thread = threading.Thread(target=_warmup_models, daemon=True, name="model-warmup")
     thread.start()
 
