@@ -59,7 +59,6 @@ An AI-powered legal contract analysis system that classifies clauses, detects un
 - **Dataset:** LEXGLUE Unfair ToS (4.4k train / 1.1k val)
 - **Epochs:** 6
 - **Val Accuracy:** 89% | **Val F1 (weighted):** 0.81
-- **ROC-AUC:** 0.93 | **PR-AUC:** 0.88 | **Best Threshold:** 0.51
 - **Baseline Accuracy:** 85% — Improvement: ~+4%
 
 ---
