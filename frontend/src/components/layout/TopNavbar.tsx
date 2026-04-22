@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Top application navigation with notifications, theme toggle, and UI controls.
+ */
+
 import { useTheme } from "next-themes";
 import { useState, useRef, useEffect } from "react";
 import { useAnimationContext } from "@/context/AnimationContext";

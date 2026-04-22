@@ -1,3 +1,5 @@
+"""Contract upload, analysis, and retrieval endpoints."""
+
 import logging
 
 from fastapi import APIRouter, Depends, UploadFile, File
@@ -19,6 +21,7 @@ async def upload_contract(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
+    """Upload a PDF contract, extract text, and persist contract metadata."""
     service = ContractService(db)
     return await service.upload(file)
 
@@ -28,6 +31,7 @@ async def analyze_contract(
     contract_id: str,
     db: Session = Depends(get_db),
 ):
+    """Run the base ML analysis pipeline for a previously uploaded contract."""
     service = ContractService(db)
     return await service.analyze(contract_id)
 
@@ -57,5 +61,6 @@ def get_contract(
     contract_id: str,
     db: Session = Depends(get_db),
 ):
+    """Fetch the latest stored analysis result for a contract."""
     service = ContractService(db)
     return service.get(contract_id)

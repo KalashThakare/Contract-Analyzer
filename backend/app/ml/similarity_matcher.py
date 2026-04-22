@@ -1,9 +1,13 @@
+"""Heuristic similarity matcher used when embedding models are not wired in."""
+
 import logging
 import hashlib
 
 logger = logging.getLogger(__name__)
 
 class SimilarityMatcher:
+    """Return deterministic pseudo-similarity against category templates."""
+
     def __init__(self):
         self.templates = {
             "Confidentiality": "The Receiving Party shall not disclose the Confidential Information to any third party and shall use it exclusively for the Purpose.",
@@ -21,6 +25,7 @@ class SimilarityMatcher:
         clause: str,
         category: str | None = None,
     ) -> dict:
+        """Find the best-matching template text and a bounded similarity score."""
         cat = category or "General"
         template_text = self.templates.get(cat, self.templates["General"])
         

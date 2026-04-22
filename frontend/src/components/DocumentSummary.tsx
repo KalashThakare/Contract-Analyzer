@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Compact document metadata + overall risk summary panel.
+ */
+
 import { FileText, Clock, Layers } from "lucide-react";
 import type { DocumentMeta, Summary, RiskLevel } from "@/types";
 

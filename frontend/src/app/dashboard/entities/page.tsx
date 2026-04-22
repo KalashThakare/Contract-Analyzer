@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Entity exploration page linking extracted NER nodes to supporting clauses.
+ */
+
 import { useState } from "react";
 import { useAnalysis } from "@/context/AnalysisContext";
 import { AnimatedContainer } from "@/components/ui/AnimatedContainer";

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Renders grouped extracted entities for fast document scanning.
+ */
+
 import { Users, Calendar, DollarSign, MapPin, type LucideIcon } from "lucide-react";
 import type { DocumentEntities } from "@/types";
 

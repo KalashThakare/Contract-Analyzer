@@ -1,3 +1,5 @@
+"""Endpoints for unfair-clause classification."""
+
 import logging
 
 from fastapi import APIRouter
@@ -11,5 +13,6 @@ router = APIRouter()
 
 @router.post("/detect", response_model=list[UnfairClauseResponse])
 async def detect_unfair_clauses(payload: UnfairClauseRequest):
+    """Classify each input clause as fair or unfair with confidence."""
     service = UnfairClauseService()
     return await service.detect(payload.clauses)

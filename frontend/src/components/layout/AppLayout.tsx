@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Dashboard shell responsible for top navigation, sidebar, and scroll container.
+ */
+
 import { Sidebar } from "./Sidebar";
 import { TopNavbar } from "./TopNavbar";
 

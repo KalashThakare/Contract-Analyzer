@@ -1,12 +1,18 @@
+"""Project-specific HTTP exceptions surfaced by service and API layers."""
+
 from fastapi import HTTPException, status
 
 
 class PDFProcessingError(HTTPException):
+    """Raised when uploaded PDF validation or text extraction fails."""
+
     def __init__(self, detail: str = "Failed to process PDF file"):
         super().__init__(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
 
 
 class ModelNotLoadedError(HTTPException):
+    """Raised when a required ML model cannot be loaded at runtime."""
+
     def __init__(self, model_name: str):
         super().__init__(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -15,6 +21,8 @@ class ModelNotLoadedError(HTTPException):
 
 
 class ContractNotFoundError(HTTPException):
+    """Raised when a contract or its analysis record cannot be found."""
+
     def __init__(self, contract_id: str):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,

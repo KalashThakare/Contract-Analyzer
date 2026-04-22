@@ -1,3 +1,5 @@
+"""Rule-based placeholder for identifying missing expected contract clauses."""
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,10 +38,13 @@ EXPECTED_CLAUSES: dict[str, list[str]] = {
 
 
 class MissingClauseDetector:
+    """Compare observed clauses against a predefined expected-clause catalogue."""
+
     def __init__(self):
         logger.info("MissingClauseDetector initialized (placeholder)")
 
     def detect(self, clauses: list[str], contract_type: str = "general") -> dict:
+        """Return missing expected clause keys and a simple coverage score."""
         expected = EXPECTED_CLAUSES.get(contract_type, EXPECTED_CLAUSES["general"])
 
         # Placeholder – pretend all clauses are present

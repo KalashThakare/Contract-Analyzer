@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Thin wrapper over next-themes to keep imports consistent across the project.
+ */
+
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

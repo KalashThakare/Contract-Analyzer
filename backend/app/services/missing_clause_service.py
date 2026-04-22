@@ -1,3 +1,5 @@
+"""Service wrapper for missing-clause detection logic."""
+
 import logging
 
 from app.schemas.missing_clause import MissingClauseResponse
@@ -6,11 +8,14 @@ logger = logging.getLogger(__name__)
 
 
 class MissingClauseService:
+    """Coordinate missing-clause inference and response schema conversion."""
+
     async def detect(
         self,
         clauses: list[str],
         contract_type: str = "general",
     ) -> MissingClauseResponse:
+        """Detect missing expected clauses for a contract type."""
         from app.ml.missing_clause_detector import MissingClauseDetector
 
         detector = MissingClauseDetector()

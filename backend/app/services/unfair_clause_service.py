@@ -1,3 +1,5 @@
+"""Service wrapper for unfair-clause classification."""
+
 import logging
 
 from app.schemas.unfair_clause import UnfairClauseResponse
@@ -6,7 +8,10 @@ logger = logging.getLogger(__name__)
 
 
 class UnfairClauseService:
+    """Run unfairness prediction and map results into API schemas."""
+
     async def detect(self, clauses: list[str]) -> list[UnfairClauseResponse]:
+        """Classify each clause and return fairness verdicts with confidence."""
         from app.ml.unfair_detector import UnfairDetector
 
         detector = UnfairDetector()

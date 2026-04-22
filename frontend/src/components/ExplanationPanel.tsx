@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Detailed clause inspector showing explanation, terms, and quick actions.
+ */
+
 import {
   MessageSquare,
   AlertTriangle,

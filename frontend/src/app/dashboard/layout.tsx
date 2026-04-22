@@ -1,3 +1,7 @@
+/**
+ * Shared dashboard shell that wraps all dashboard subroutes with app chrome.
+ */
+
 import { AppLayout } from "@/components/layout/AppLayout";
 
 export default function DashboardLayout({

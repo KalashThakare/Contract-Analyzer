@@ -1,3 +1,5 @@
+"""Clause type classification with a transformer-first and sklearn-fallback strategy."""
+
 import logging
 import json
 
@@ -12,6 +14,7 @@ settings = get_settings()
 
 @lru_cache(maxsize=None)
 def _load_bert():
+    """Load transformer classifier assets and label mapping from Hugging Face."""
     try:
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
         from huggingface_hub import hf_hub_download
@@ -37,6 +40,7 @@ def _load_bert():
 
 @lru_cache(maxsize=None)
 def _load_sklearn():
+    """Load lightweight sklearn fallback classifier and vectorizer."""
     from app.ml.model_loader import load_pkl
     clf = load_pkl("clause_classifier_baseline.pkl")
     vec = load_pkl("tfidf_vectorizer.pkl")
@@ -44,6 +48,8 @@ def _load_sklearn():
 
 
 class ClauseClassifier:
+    """Predict clause category labels with confidence scores."""
+
     def __init__(self):
         tokenizer, model, id2label = _load_bert()
         self._bert_ready = model is not None
@@ -55,6 +61,7 @@ class ClauseClassifier:
             logger.warning("ClauseClassifier: BERT unavailable, using sklearn fallback")
 
     def predict(self, clause_text: str) -> tuple[str, float]:
+        """Predict a clause label and confidence for a single clause."""
         if self._bert_ready:
             return self._predict_bert(clause_text)
         return self._predict_sklearn(clause_text)
@@ -93,4 +100,5 @@ class ClauseClassifier:
             return "Unknown", 0.0
 
     def predict_batch(self, clauses: list[str]) -> list[tuple[str, float]]:
+        """Run classification over multiple clauses preserving input order."""
         return [self.predict(c) for c in clauses]

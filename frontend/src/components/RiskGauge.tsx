@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Pie-chart visualization for clause risk distribution.
+ */
+
 import {
   PieChart,
   Pie,

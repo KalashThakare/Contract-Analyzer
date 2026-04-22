@@ -1,3 +1,5 @@
+"""Unfair-clause binary classifier wrapper around a fine-tuned transformer."""
+
 import logging
 
 import torch
@@ -12,6 +14,7 @@ _bert_model = None
 
 
 def _load_bert():
+    """Load tokenizer/model once and reuse globally for inference."""
     global _bert_tokenizer, _bert_model
     if _bert_tokenizer is None:
         try:
@@ -26,6 +29,8 @@ def _load_bert():
 
 
 class UnfairDetector:
+    """Classify clauses as fair/unfair and return confidence with explanation."""
+
     LABEL_MAP = {0: "fair", 1: "unfair"}
 
     def __init__(self):
@@ -38,6 +43,7 @@ class UnfairDetector:
             logger.warning("UnfairDetector: model not loaded — returning fallback")
 
     def predict(self, clause_text: str) -> dict:
+        """Predict unfairness for a single clause with fallback defaults."""
         if self._bert_ready:
             result = self._predict_bert(clause_text)
             if result:
@@ -71,4 +77,5 @@ class UnfairDetector:
             return None
 
     def predict_batch(self, clauses: list[str]) -> list[dict]:
+        """Predict unfairness for multiple clauses preserving input order."""
         return [self.predict(c) for c in clauses]

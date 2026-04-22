@@ -1,3 +1,5 @@
+"""Shared helpers for loading serialized fallback models from Hugging Face."""
+
 import logging
 import pickle
 from functools import lru_cache
@@ -10,6 +12,7 @@ settings = get_settings()
 
 @lru_cache(maxsize=None)
 def load_pkl(filename: str):
+    """Download and deserialize a pickled artifact from the configured model repo."""
     try:
         from huggingface_hub import hf_hub_download
 

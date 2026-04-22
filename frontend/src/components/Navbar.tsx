@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Lightweight navbar used in the legacy non-dashboard flow.
+ */
+
 import Link from "next/link";
 import { Scale } from "lucide-react";
 

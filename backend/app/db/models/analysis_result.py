@@ -1,3 +1,5 @@
+"""SQLAlchemy model for persisted contract analysis outputs."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -8,6 +10,8 @@ from app.db.base_class import Base
 
 
 class AnalysisResult(Base):
+    """Persists clause-level analysis payloads and aggregate risk metrics."""
+
     __tablename__ = "analysis_results"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

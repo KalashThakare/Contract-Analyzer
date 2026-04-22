@@ -1,3 +1,5 @@
+"""API v1 router that aggregates all endpoint groups under a single router."""
+
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (

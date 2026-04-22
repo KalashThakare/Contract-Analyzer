@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Legacy analysis page that renders a three-column review workspace.
+ */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload } from "lucide-react";
@@ -16,6 +20,7 @@ export default function AnalysisPage() {
   const router = useRouter();
   const [selectedClause, setSelectedClause] = useState<Clause | null>(null);
 
+  // Guard state for direct navigation before an upload/analysis is completed.
   if (!result) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Interactive card showing one clause summary with quick risk metadata.
+ */
+
 import { useState } from "react";
 import { AlertTriangle, User, ChevronRight } from "lucide-react";
 import type { Clause } from "@/types";

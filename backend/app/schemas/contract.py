@@ -1,3 +1,5 @@
+"""Pydantic schemas for contract upload and analysis responses."""
+
 from datetime import datetime
 from typing import Any
 
@@ -5,6 +7,8 @@ from pydantic import BaseModel, computed_field
 
 
 class ContractUploadResponse(BaseModel):
+    """Response payload returned after successful PDF upload."""
+
     contract_id: str
     filename: str
     page_count: int
@@ -13,12 +17,16 @@ class ContractUploadResponse(BaseModel):
 
 
 class EntityDetail(BaseModel):
+    """Named-entity detail extracted from a clause."""
+
     text: str
     label: str       # PARTY, DATE, AMOUNT, TERM, JURISDICTION
     confidence: float
 
 
 class ClauseDetail(BaseModel):
+    """Normalized per-clause analysis output consumed by the frontend."""
+
     index: int
     text: str
     clause_type: str | None = None
@@ -37,6 +45,7 @@ class ClauseDetail(BaseModel):
     @computed_field
     @property
     def risk_level(self) -> str | None:
+        """Derive a human-readable risk band from numeric risk_score."""
         if self.risk_score is None:
             return None
         if self.risk_score >= 70:
@@ -47,6 +56,8 @@ class ClauseDetail(BaseModel):
 
 
 class ContractAnalysisResponse(BaseModel):
+    """Full analysis response for a contract and its clause-level outputs."""
+
     contract_id: str
     filename: str
     clauses: list[ClauseDetail]

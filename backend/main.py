@@ -1,3 +1,8 @@
+"""FastAPI entrypoint for the Contract Analyzer backend.
+
+This module wires app startup, middleware, API routing, and background model warmup.
+"""
+
 import logging
 import os
 import threading
@@ -6,6 +11,7 @@ from pathlib import Path
 
 _ssl_cert = os.environ.get("SSL_CERT_FILE", "")
 if _ssl_cert and not Path(_ssl_cert).is_file():
+    # Fall back to certifi defaults when a stale SSL_CERT_FILE is configured.
     logging.getLogger("startup").warning(
         "SSL_CERT_FILE points to a missing file (%s) — removing it so certifi is used.", _ssl_cert
     )
@@ -29,6 +35,7 @@ _warmup_logger = logging.getLogger("model_warmup")
 
 
 def _warmup_models():
+    """Load ML models in a background thread to reduce first-request latency."""
     _warmup_logger.info("Background warmup: starting model pre-loading...")
 
     try:
@@ -66,6 +73,7 @@ def _warmup_models():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Initialize logging/DB on startup and schedule model warmup asynchronously."""
     setup_logging()
 
     # Ensure DB tables exist — fast, no model loading here.
@@ -99,6 +107,7 @@ app.include_router(v1_router, prefix="/api/v1")
 
 @app.get("/")
 def root():
+    """Lightweight root endpoint used for simple service reachability checks."""
     return {"message": "Contract Analyzer API is running"}
 
 

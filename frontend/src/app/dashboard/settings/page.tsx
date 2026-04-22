@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * User-facing app settings for theme, animation behavior, and local data reset.
+ */
+
 import { useTheme } from "next-themes";
 import { useAnimationContext } from "@/context/AnimationContext";
 import { useAnalysis } from "@/context/AnalysisContext";

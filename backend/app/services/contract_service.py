@@ -1,3 +1,5 @@
+"""Business logic for contract upload, analysis orchestration, and retrieval."""
+
 import logging
 from datetime import datetime, timezone
 
@@ -27,10 +29,13 @@ settings = get_settings()
 
 
 class ContractService:
+    """Coordinate DB persistence, ML inference, and LLM enrichment flows."""
+
     def __init__(self, db: Session):
         self.db = db
 
     async def upload(self, file: UploadFile) -> ContractUploadResponse:
+        """Validate and store an uploaded PDF contract with extracted metadata."""
         if not file.filename or not file.filename.lower().endswith(".pdf"):
             raise PDFProcessingError("Only PDF files are accepted")
 
@@ -64,6 +69,7 @@ class ContractService:
         )
 
     async def analyze(self, contract_id: str) -> ContractAnalysisResponse:
+        """Run baseline ML analysis and persist the resulting clause annotations."""
         contract = self.db.query(Contract).filter(Contract.id == contract_id).first()
         if not contract:
             raise ContractNotFoundError(contract_id)
@@ -184,6 +190,7 @@ class ContractService:
         )
 
     def get(self, contract_id: str) -> ContractAnalysisResponse:
+        """Return the latest stored analysis payload for a contract id."""
         contract = self.db.query(Contract).filter(Contract.id == contract_id).first()
         if not contract:
             raise ContractNotFoundError(contract_id)

@@ -1,3 +1,5 @@
+"""Endpoints for missing-clause detection."""
+
 import logging
 
 from fastapi import APIRouter
@@ -11,5 +13,6 @@ router = APIRouter()
 
 @router.post("/detect", response_model=MissingClauseResponse)
 async def detect_missing_clauses(payload: MissingClauseRequest):
+    """Detect missing structural clauses for the provided contract clauses."""
     service = MissingClauseService()
     return await service.detect(payload.clauses, payload.contract_type)

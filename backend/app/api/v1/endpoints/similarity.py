@@ -1,3 +1,5 @@
+"""Endpoints for clause-to-template similarity matching."""
+
 import logging
 
 from fastapi import APIRouter
@@ -11,5 +13,6 @@ router = APIRouter()
 
 @router.post("/compare", response_model=list[SimilarityResponse])
 async def compare_clauses(payload: SimilarityRequest):
+    """Compare input clauses against the selected template category."""
     service = SimilarityService()
     return await service.compare(payload.clauses, payload.template_category)

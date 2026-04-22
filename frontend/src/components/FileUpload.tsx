@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Standalone upload widget used by the legacy analysis flow (/analysis path).
+ */
+
 import { useState, useRef, type ChangeEvent, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { UploadCloud, FileText, AlertCircle, Loader2 } from "lucide-react";
@@ -26,6 +30,7 @@ export default function FileUpload() {
   const { setResult, setUploadInfo } = useAnalysis();
 
   const cycleMessages = (): ReturnType<typeof setInterval> => {
+    // Rotate status text while backend upload + analysis requests are in flight.
     let i = 0;
     setLoadingMsg(LOADING_MESSAGES[0]);
     const interval = setInterval(() => {
@@ -36,6 +41,7 @@ export default function FileUpload() {
   };
 
   const processFile = async (file: File) => {
+    // Keep this component strict to PDF to match backend expectations.
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       setError("Only PDF files are supported.");
       return;

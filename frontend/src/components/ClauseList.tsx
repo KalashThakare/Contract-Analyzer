@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Scrollable clause list with risk/unfairness filters and selection callbacks.
+ */
+
 import { useState } from "react";
 import ClauseCard from "./ClauseCard";
 import type { Clause, Summary } from "@/types";
@@ -14,6 +18,7 @@ function getCount(f: string, summary: Summary): number | null {
 }
 
 function filterClauses(clauses: Clause[], active: string): Clause[] {
+  // Keep filtering logic centralized so tabs stay declarative in JSX.
   switch (active) {
     case "High Risk":
       return clauses.filter((c) => c.risk_level === "high");

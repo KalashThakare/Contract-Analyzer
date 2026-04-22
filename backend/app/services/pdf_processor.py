@@ -1,12 +1,16 @@
+"""PDF extraction and clause segmentation utilities."""
+
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class PDFProcessor:
+    """Handle PDF text extraction and heuristic clause segmentation."""
 
     @staticmethod
     def extract_text(pdf_bytes: bytes) -> tuple[str, int]:
+        """Extract concatenated text and page count from PDF bytes using PyMuPDF."""
 
         import fitz  # PyMuPDF
 

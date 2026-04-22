@@ -1,3 +1,5 @@
+"""Joint clause classification and risk scoring predictor with graceful fallback."""
+
 import json
 import logging
 from functools import lru_cache
@@ -14,6 +16,8 @@ settings = get_settings()
 
 
 class MultiTaskLegalModel(nn.Module):
+    """Transformer encoder with dual heads for class logits and risk regression."""
+
     def __init__(
         self,
         model_name: str,
@@ -58,6 +62,7 @@ class MultiTaskLegalModel(nn.Module):
 
 @lru_cache(maxsize=1)
 def _load_multitask(repo_id: str):
+    """Load multitask model weights, metadata, and tokenizer from Hugging Face."""
     meta_path = hf_hub_download(repo_id=repo_id, filename="metadata.json", repo_type="model")
     weights_path = hf_hub_download(repo_id=repo_id, filename="full_model.pt", repo_type="model")
 
@@ -84,6 +89,8 @@ def _load_multitask(repo_id: str):
 
 
 class MultiTaskPredictor:
+    """High-level predictor that prefers multitask BERT and falls back to legacy models."""
+
     def __init__(self, repo_id: str | None = None):
         self.repo_id = repo_id or settings.HF_MULTITASK_REPO_ID
         self._tokenizer = None
@@ -101,6 +108,7 @@ class MultiTaskPredictor:
 
     @staticmethod
     def _risk_level(score: float) -> str:
+        """Map numeric risk score to LOW/MEDIUM/HIGH bands."""
         if score >= 70:
             return "HIGH"
         if score >= 40:
@@ -108,6 +116,7 @@ class MultiTaskPredictor:
         return "LOW"
 
     def _enable_fallback(self):
+        """Initialize fallback clause and risk models lazily."""
         if self._fallback_clf is not None and self._fallback_risk is not None:
             return
 
@@ -119,6 +128,7 @@ class MultiTaskPredictor:
         logger.warning("MultiTaskPredictor fallback enabled: ClauseClassifier + RiskScorer")
 
     def _predict_multitask(self, text: str) -> dict:
+        """Run transformer inference and return normalized analysis fields."""
         inputs = self._tokenizer(
             text,
             return_tensors="pt",
@@ -148,6 +158,7 @@ class MultiTaskPredictor:
         }
 
     def _predict_fallback(self, text: str) -> dict:
+        """Run legacy independent models when multitask model is unavailable."""
         self._enable_fallback()
 
         clause_type, confidence = self._fallback_clf.predict(text)
@@ -162,6 +173,7 @@ class MultiTaskPredictor:
         }
 
     def predict(self, text: str) -> dict:
+        """Predict clause metadata for one text input with automatic fallback."""
         if not text or not text.strip():
             return {
                 "clause_type": "Unknown",
@@ -180,4 +192,5 @@ class MultiTaskPredictor:
         return self._predict_fallback(text)
 
     def predict_batch(self, clauses: list[str]) -> list[dict]:
+        """Predict analysis metadata for a list of clauses."""
         return [self.predict(c) for c in clauses]

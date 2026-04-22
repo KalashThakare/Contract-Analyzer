@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Risk visualization page with scatter, trend, and elevated-risk highlights.
+ */
+
 import { useAnalysis } from "@/context/AnalysisContext";
 import { AnimatedContainer } from "@/components/ui/AnimatedContainer";
 import { ShieldAlert, TrendingDown, Target, Activity, AlertTriangle } from "lucide-react";

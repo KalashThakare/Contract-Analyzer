@@ -1,3 +1,8 @@
+/**
+ * Mock analysis payload used when NEXT_PUBLIC_USE_MOCK=true.
+ * Keeps UI development decoupled from backend availability.
+ */
+
 import type { AnalysisResult } from "@/types";
 
 export const MOCK_ANALYSIS_RESULT: AnalysisResult = {

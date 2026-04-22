@@ -1,3 +1,5 @@
+"""Central logging configuration for backend services and dependencies."""
+
 import logging
 import sys
 
@@ -5,6 +7,7 @@ from app.core.config import get_settings
 
 
 def setup_logging() -> None:
+    """Configure root logging and tone down noisy third-party loggers."""
     settings = get_settings()
     level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
 

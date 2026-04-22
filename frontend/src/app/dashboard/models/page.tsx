@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Static model telemetry page describing the current inference stack.
+ */
+
 import { AnimatedContainer } from "@/components/ui/AnimatedContainer";
 import { BrainCircuit, Cpu, LibraryBig, Share2, Layers, Tag, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";

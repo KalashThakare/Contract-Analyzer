@@ -1,3 +1,5 @@
+"""SQLAlchemy model representing an uploaded contract document."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -8,6 +10,8 @@ from app.db.base_class import Base
 
 
 class Contract(Base):
+    """Stores the raw uploaded contract text and basic file metadata."""
+
     __tablename__ = "contracts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

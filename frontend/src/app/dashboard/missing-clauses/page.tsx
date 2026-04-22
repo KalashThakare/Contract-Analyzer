@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Missing-clause review page that reflects phase-based LLM progress states.
+ */
+
 import { useAnalysis } from "@/context/AnalysisContext";
 import { AnimatedContainer } from "@/components/ui/AnimatedContainer";
 import { Search, AlertCircle, ShieldCheck, Loader2, AlertTriangle } from "lucide-react";

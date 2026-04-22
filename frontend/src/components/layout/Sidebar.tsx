@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Primary dashboard sidebar with navigation groups and recent-contract history.
+ */
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
@@ -34,6 +38,7 @@ export function Sidebar({ className }: { className?: string }) {
 
   const handleLoadHistory = async (id: string) => {
     try {
+      // Avoid redundant fetches when the selected history item is already active.
       if (result?.document?.document_id !== id) {
         await loadContractFromHistory(id);
       }

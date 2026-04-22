@@ -1,3 +1,5 @@
+"""Service wrapper for semantic similarity matching."""
+
 import logging
 
 from app.schemas.similarity import SimilarityResponse
@@ -6,11 +8,14 @@ logger = logging.getLogger(__name__)
 
 
 class SimilarityService:
+    """Compute best template matches for each input clause."""
+
     async def compare(
         self,
         clauses: list[str],
         template_category: str | None = None,
     ) -> list[SimilarityResponse]:
+        """Return similarity metadata for each clause in order."""
         from app.ml.similarity_matcher import SimilarityMatcher
 
         matcher = SimilarityMatcher()
