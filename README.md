@@ -1,371 +1,154 @@
-# Legal Contract Analyzer — Deep Learning Lab Project
+# Contract Analyzer
 
-> A multi-model deep learning system for automated legal contract analysis — clause classification, risk scoring, unfair clause detection, entity extraction, and LLM-powered semantic review.
-
-Built as a lab project for the **Deep Learning** course under **Prof. Vikas R. Gupta**.
+An AI-powered legal contract analysis system that classifies clauses, detects unfair terms, extracts named entities, identifies missing clauses, and assesses contract risk — built with Legal-BERT, FastAPI, and Next.js.
 
 ---
 
-## Table of Contents
+## Project Guide
 
-1. [Project Objective](#project-objective)
-2. [Team and Contributions](#team-and-contributions)
-3. [Deep Learning Architecture](#deep-learning-architecture)
-4. [DL Models — Detailed Breakdown](#dl-models--detailed-breakdown)
-5. [LLM Integration Layer](#llm-integration-layer)
-6. [Analysis Pipeline](#analysis-pipeline)
-7. [What We Learned](#what-we-learned)
-8. [Tech Stack](#tech-stack)
-9. [Getting Started](#getting-started)
-10. [Environment Variables](#environment-variables)
-11. [Project Structure](#project-structure)
-12. [API Reference](#api-reference)
-13. [License](#license)
+**Prof. Vikas R Gupta**
 
 ---
 
-## Project Objective
+## Team Members
 
-Legal contracts contain hundreds of clauses, each carrying potential risks — indemnification traps, unilateral termination rights, asymmetric liability caps, and missing protective provisions. Manually reviewing even a single contract takes hours.
-
-This project applies **Deep Learning** to automate this process:
-
-- **4 fine-tuned BERT-based DL models** handle structured extraction (classification, risk scoring, unfairness detection, entity recognition)
-- **An LLM layer** (Ollama Cloud / Groq) provides deep semantic review — generating human-readable explanations, identifying missing clauses, and recommending redline actions
-
-The system processes a contract PDF end-to-end and produces a comprehensive risk report in under a minute.
+| Name | Roll No. | Contribution |
+|------|----------|--------------|
+| Kalash Thakare | 35 | Unfair Clause Detection |
+| Jayesh Rajbhar | 34 | Clause Classification (Legal-BERT on LEDGAR) |
+| Gaurav Dongre | 28 | Named Entity Recognition (Legal-BERT NER) |
 
 ---
 
-## Team and Contributions
+## Model Performance
 
-| Member | Responsibilities |
-|--------|-----------------|
-| **Kalash Thakare** | Unfair clause detection (fine-tuned BERT binary classifier — `KalashT/unfair-clause-classifier`), backend architecture (FastAPI, database, API design), pipeline integration, clause segmentation model integration |
-| **Gaurav Dongre** | Named Entity Recognition model (Legal-BERT fine-tuned on CUAD — `Devil1710/Legal-Document-Analyzer-NER`), entity extraction pipeline (IOB2 decoding, subword merging) |
-| **Jayesh Rajbhar** | Clause classifier (Legal-BERT fine-tuned on LEDGAR — `AnkushRaheja/Legal-Document-Analyzer`), risk scorer (TF-IDF + Ridge regression), sklearn baseline models | Frontend development (Next.js dashboard)
+### Jayesh Rajbhar — Clause Classification
 
----
-
-## Deep Learning Architecture
-```
-   PDF Upload
-       │
-       ▼
-  ┌─────────────────────────────────────────────────────────────────────┐
-  │  FAST DL PIPELINE (~3-5 seconds)                                   │
-  │                                                                     │
-  │  [1] PyMuPDF Text Extraction                                       │
-  │       │                                                             │
-  │       ▼                                                             │
-  │  [2] Clause Segmentation (regex heuristics)                        │
-  │       │                                                             │
-  │       ▼                                                             │
-  │  ┌────┴────────────┬──────────────────┬──────────────────┐         │
-  │  │                 │                  │                   │         │
-  │  ▼                 ▼                  ▼                   ▼         │
-  │  Multi-Task        Unfairness         Legal-NER           SHAP     │
-  │  Legal-BERT        Detection          Token                Risk    │
-  │  (Cls+Risk)        BERT               Classification      Terms   │
-  │  768d→2 heads      768d→2 class       768d→IOB2 tags              │
-  │  │                 │                  │                            │
-  │  ▼                 ▼                  ▼                            │
-  │  clause_type       is_unfair          entities                     │
-  │  risk_score        confidence         (PARTY, DATE,                │
-  │  (0-100)           (0.0-1.0)           AMOUNT, TERM)               │
-  │                                                                     │
-  └──────────────────────────┬──────────────────────────────────────────┘
-                             │
-                     Results stored in DB
-                     Frontend shows DL scores
-                             │
-                             ▼
-  ┌─────────────────────────────────────────────────────────────────────┐
-  │  LLM SEMANTIC REVIEW (background, progressive)                     │
-  │                                                                     │
-  │  Phase 1: Clause-by-clause deep analysis                           │
-  │   → explanation, recommendation, top_risk_terms per clause          │
-  │   → Chunks of N clauses sent to LLM sequentially                   │
-  │   → Each chunk result saved to DB immediately (progressive poll)   │
-  │                                                                     │
-  │  Phase 2: Missing clause identification                            │
-  │   → Full contract text sent to LLM                                  │
-  │   → Returns 5-7 critical missing clauses with example wording      │
-  │                                                                     │
-  │  Provider: Ollama Cloud OR Groq  (switchable via .env)             │
-  └─────────────────────────────────────────────────────────────────────┘
-```
+- **Model:** `nlpaueb/legal-bert-base-uncased`
+- **Dataset:** LEDGAR (60k train / 10k val / 10k test)
+- **Epochs:** 3
+- **Val Accuracy:** 86.12% | **Val F1 (weighted):** 0.8525
+- **Test Accuracy:** 86.47% | **Test F1 (weighted):** 0.8558
+- **Baseline Accuracy:** 84.00% — Improvement: +2.47%
 
 ---
 
-## DL Models — Detailed Breakdown
+### Kalash Thakare — Unfair Clause Detection
 
-### Model 1: Multi-Task Legal-BERT (Classification + Risk Scoring)
-
-| Property | Value |
-|----------|-------|
-| **HuggingFace Repo** | `AnkushRaheja/Cls_Class_Risk_Scr` |
-| **Base Architecture** | `nlpaueb/legal-bert-base-uncased` (768-dim) |
-| **Training Data** | LEDGAR dataset (100+ clause types) |
-| **Task** | Joint clause classification + risk regression |
-| **Architecture** | Shared BERT encoder → two task-specific heads |
-
-```
-PDF Upload
-    |
-    v
-[1] Text Extraction (PyMuPDF)
-    |   Extracts raw text and page count from the uploaded PDF.
-    v
-[2] Clause Segmentation
-    |   Model: Devil1710/Legal-Clause-Segmenter (BERT sequence classifier)
-    |   Splits the raw text into clause boundaries by classifying sentence-level
-    |   boundary candidates and grouping consecutive sentences into clauses.
-    |   Clauses outside 10-320 words are filtered out.
-    v
-[3] Unfair Clause Detection (per clause)
-    |   Model:  KalashT/unfair-clause-classifier (BERT)
-    |   Input:  clause text (max 128 tokens)
-    |   Output: { is_unfair: bool, confidence: float, explanation: str }
-    |   Labels: fair (0), unfair (1)
-    v
-[4] Named Entity Recognition (per clause)
-    |   Model:  Devil1710/Legal-Document-Analyzer-NER (Legal-BERT)
-    |   Input:  clause text (max 512 tokens)
-    |   Output: [{ text, label, confidence }]
-    |   Labels: PARTY, DATE, AMOUNT, TERM, JURISDICTION, etc.
-    |   Process:
-    |     - Tokenize with BERT tokenizer
-    |     - Run inference (CPU, no gradients)
-    |     - Merge subword tokens back to whole words
-    |     - Convert IOB2 tags (B-PARTY, I-PARTY, O) into entity spans
-    v
-[5] Clause Classification (per clause)
-    |   Model:  AnkushRaheja/Legal-Document-Analyzer (Legal-BERT on LEDGAR)
-    |   Input:  clause text (max 512 tokens)
-    |   Output: (clause_type: str, confidence: float)
-    |   Fallback: sklearn LinearSVC + TF-IDF vectorizer if BERT is unavailable
-    v
-[6] Risk Scoring (per clause)
-    |   Model:  sklearn Ridge regressor + TF-IDF vectorizer
-    |   Source: AnkushRaheja/Legal-Document-Analyzer (sklearn-models/)
-    |   Input:  clause text -> TF-IDF vector -> dense array
-    |   Output: risk_score (0.0 - 100.0)
-    |   Levels: LOW (0-39), MEDIUM (40-69), HIGH (70-100)
-    v
-[7] Aggregation
-    |   - Per-clause results are assembled into ClauseDetail objects
-    |   - Overall risk = mean of all clause risk scores
-    |   - Missing clause detection checks for absent standard clauses
-    v
-[8] Persist and Respond
-        - Results saved to AnalysisResult table (Supabase)
-        - JSON response returned to frontend
-```
-
-**DL Concepts Applied:**
-- Multi-task learning with shared BERT backbone — two independent heads trained jointly
-- Transfer learning from Legal-BERT (pre-trained on 12GB of legal documents)
-- Dropout regularization (p=0.25) between dense layers
-- Sigmoid activation on regressor head for bounded risk output
-
-### Model 2: Unfair Clause Detection BERT
-
-| Property | Value |
-|----------|-------|
-| **HuggingFace Repo** | `KalashT/unfair-clause-classifier` |
-| **Base Architecture** | `bert-base-uncased` |
-| **Task** | Binary classification (fair vs. unfair) |
-| **Max Tokens** | 128 |
-
-```
-Input: clause text (max 128 tokens, padded)
-          │
-          ▼
-  BERT Sequence Classification (2-class)
-          │
-          ▼
-     Softmax → argmax
-          │
-          ▼
-  { is_unfair: bool, confidence: float }
-```
-
-**DL Concepts Applied:**
-- Fine-tuned BERT for binary sequence classification
-- Domain adaptation — detecting commercially asymmetric legal language
-- Short context window (128 tokens) optimized for individual clause-level decisions
-
-### Model 3: Legal Named Entity Recognition (NER)
-
-| Property | Value |
-|----------|-------|
-| **HuggingFace Repo** | `Devil1710/Legal-NER-v2` |
-| **Base Architecture** | Legal-BERT (Token Classification) |
-| **Task** | IOB2 sequence labeling |
-| **Entity Types** | PARTY, DATE, AMOUNT, TERM, JURISDICTION, etc. |
-
-```
-Input: clause text (max 512 tokens)
-          │
-          ▼
-  BERT Tokenizer → subword tokens
-          │
-          ▼
-  Legal-BERT Token Classification
-  (logits per token per label)
-          │
-          ▼
-  Softmax → argmax per token → IOB2 tags
-          │
-          ▼
-  Subword Merging:
-    - Discard [CLS], [SEP], [PAD]
-    - Discard ## subword continuations
-          │
-          ▼
-  IOB2 → Entity Span Conversion:
-    B-PARTY starts entity, I-PARTY continues, O closes
-          │
-          ▼
-  [{ text: "Apple Inc", label: "PARTY", confidence: 0.97 }]
-```
-
-**DL Concepts Applied:**
-- Token-level classification (vs. sequence-level in Models 1 & 2)
-- IOB2 tagging scheme for named entity boundary detection
-- Subword-to-word alignment — merging BERT's WordPiece tokens back into readable entities
-- Confidence scoring per entity span
-
-### Model 4: sklearn Baseline Risk Scorer
-
-| Property | Value |
-|----------|-------|
-| **Source** | `AnkushRaheja/Legal-Document-Analyzer` (sklearn-models/) |
-| **Architecture** | TF-IDF Vectorizer → Ridge Regression |
-| **Task** | Risk score prediction (0-100) |
-
-This acts as a fallback when the Multi-Task BERT model is unavailable. While not a deep learning model in the traditional sense, it demonstrates the contrast between classical ML feature engineering (TF-IDF bag-of-words) and learned representations (BERT embeddings).
-
-### Risk Score Calculation
-
-| Score Range | Level  |
-|-------------|--------|
-| 70 – 100    | HIGH   |
-| 40 – 69     | MEDIUM |
-| 0 – 39      | LOW    |
-
-**Overall document risk** = arithmetic mean of all per-clause risk scores.
+- **Model:** `bert-base-uncased` (fine-tuned with Focal Loss + class balancing)
+- **Dataset:** LEXGLUE Unfair ToS (4.4k train / 1.1k val)
+- **Epochs:** 6
+- **Val Accuracy:** 89% | **Val F1 (weighted):** 0.81
+- **ROC-AUC:** 0.93 | **PR-AUC:** 0.88 | **Best Threshold:** 0.51
+- **Baseline Accuracy:** 85% — Improvement: ~+4%
 
 ---
 
-## LLM Integration Layer
+### Gaurav Dongre — Named Entity Recognition
 
-| Model | Type | Source | Task |
-|-------|------|--------|------|
-| `Devil1710/Legal-Clause-Segmenter` | BERT (Sequence Classification) | HuggingFace | Clause boundary detection / clause segmentation |
-| `KalashT/unfair-clause-classifier` | BERT (Sequence Classification) | HuggingFace | Binary unfair clause detection |
-| `Devil1710/Legal-Document-Analyzer-NER` | Legal-BERT (Token Classification) | HuggingFace | Named Entity Recognition (PARTY, DATE, AMOUNT, etc.) |
-| `AnkushRaheja/Legal-Document-Analyzer` | Legal-BERT (Sequence Classification) | HuggingFace | Clause type classification (100+ LEDGAR categories) |
-| `risk_scorer_baseline.pkl` | Ridge Regression | AnkushRaheja (sklearn-models/) | Risk score prediction (0-100) |
-| `risk_vectorizer.pkl` | TF-IDF Vectorizer | AnkushRaheja (sklearn-models/) | Text vectorization for risk scorer |
-| `clause_classifier_baseline.pkl` | LinearSVC | AnkushRaheja (sklearn-models/) | Fallback clause classifier |
-| `tfidf_vectorizer.pkl` | TF-IDF Vectorizer | AnkushRaheja (sklearn-models/) | Text vectorization for clause classifier |
-
-The four DL models above produce **structured, deterministic outputs** — a clause type label, a risk score, a fair/unfair flag, entity tags. But they cannot explain *why* a clause is dangerous in natural language, nor can they reason about what's *missing* from a contract.
-
-The LLM layer addresses this gap:
-- **Phase 1 — Clause Analysis**: For each clause, the LLM generates a human-readable explanation of liability exposure, identifies exact risk terms (verbatim substrings), and recommends a redline action.
-- **Phase 2 — Missing Clause Detection**: The LLM reads the full contract text and identifies 5–7 critical clauses that should be present but are absent (e.g., Force Majeure, Arbitration, Data Protection).
-
-### Hybrid Provider Architecture
-
-The system supports **two LLM providers** that can be swapped with a single `.env` variable:
-
-```
-LLM_PROVIDER=ollama    # OR  LLM_PROVIDER=groq
-```
-
-| Feature | Ollama (Cloud) | Groq |
-|---------|---------------|------|
-| **Model** | DeepSeek V3.2 (configurable) | deepseek-r1-distill-llama-70b |
-| **Hosting** | Ollama Cloud | Groq LPU Cloud |
-| **Speed** | ~2-5 min per chunk | ~5-15 sec per chunk |
-| **Chunk Size** | 3 clauses/prompt | 8 clauses/prompt |
-| **Read Timeout** | 600s | 60s |
-| **API Format** | `/api/generate` | OpenAI-compatible `/chat/completions` |
-| **JSON Enforcement** | `format: "json"` | `response_format: { type: "json_object" }` |
-| **Cost** | Free tier available | Free tier (14,400 req/day) |
-
-**Switching providers** requires changing only `LLM_PROVIDER` in `.env` and restarting the backend. No code changes needed.
-
-### Progressive Results
-
-LLM analysis runs **asynchronously in the background** after the fast DL pipeline completes:
-
-1. User uploads PDF → DL pipeline runs (~3-5s) → results displayed immediately
-2. LLM Phase 1 starts in background → each chunk is saved to DB as it completes → frontend polls every 15s and shows progressive updates
-3. After Phase 1 completes, Phase 2 (missing clauses) starts automatically
-4. Each phase has independent loading states and error handling on the frontend
-
-### DeepSeek R1 `<think>` Tag Handling
-
-DeepSeek R1 models emit chain-of-thought reasoning inside `<think>...</think>` XML blocks before outputting JSON. The `_safe_json_extract()` method strips these tags automatically using regex before JSON parsing, ensuring compatibility with both standard models and reasoning models.
+- **Model:** Legal-BERT (fine-tuned)
+- **Dataset:** Contract NER Dataset (~60k samples)
+- **Training:** 8 epochs, AdamW optimizer, Linear warmup + decay, fp16, 2x Tesla T4 on Kaggle
+- **Test F1:** 0.744 | **Precision:** 0.653 | **Recall:** 0.864
+- **Baseline F1:** 0.634 — Improvement: +0.110
 
 ---
 
-## What We Learned
+## Project Structure
 
-### Deep Learning Concepts Applied
-
-1. **Transfer Learning** — All four models leverage pre-trained BERT weights, fine-tuned on domain-specific legal corpora. This dramatically reduces the training data requirement versus training from scratch.
-
-2. **Multi-Task Learning** — The `Cls_Class_Risk_Scr` model shares a single BERT encoder between two task-specific heads (classifier + regressor). This forces the shared representation to encode features useful for both tasks, improving generalization.
-
-3. **Token Classification vs. Sequence Classification** — We implemented both paradigms:
-   - Sequence classification (Models 1 & 2): One label per input sequence
-   - Token classification (Model 3): One label per token, requiring IOB2 decoding and subword merging
-
-4. **Domain Adaptation** — Using `legal-bert-base-uncased` (pre-trained on 12GB of legal text) as the base model instead of generic `bert-base-uncased` significantly improved performance on legal-specific terminology.
-
-5. **Dropout Regularization** — Applied at p=0.25 between dense layers in the multi-task heads to prevent overfitting on the relatively small LEDGAR training set.
-
-6. **Sigmoid vs. Softmax Activation** — The risk regressor uses Sigmoid to produce bounded [0, 1] output (scaled to 0-100), while the classifier uses Softmax for probability distribution across classes.
-
-### LLM Integration Insights
-
-7. **Structured Output Enforcement** — We discovered that LLMs require explicit prompt engineering to produce valid JSON. Different providers need different enforcement mechanisms (`format: "json"` for Ollama vs. `response_format: { type: "json_object" }` for Groq's OpenAI-compatible API).
-
-8. **Chain-of-Thought Contamination** — DeepSeek R1 reasoning models wrap their internal reasoning in `<think>` tags before the actual response. Without stripping these, JSON parsing fails silently. This was a non-obvious integration challenge.
-
-9. **Chunking Strategy** — Sending all clauses in one prompt causes context overflow and degraded output quality. Splitting into small chunks (3-8 clauses) and processing sequentially produces far more reliable results.
-
-10. **Progressive Loading UX** — LLM responses can take minutes. Instead of blocking the UI, we implemented a callback-based system where each chunk is persisted to the database immediately upon completion, and the frontend polls for updates.
-
-11. **Provider Abstraction** — By abstracting the LLM layer behind a provider interface, we can swap between Ollama and Groq (or add new providers) without touching any business logic. This proved essential when one provider's rate limits were exhausted.
-
-### Classical ML vs. Deep Learning
-
-12. **Feature Engineering vs. Learned Representations** — The sklearn baseline (TF-IDF + Ridge) requires manual feature engineering and loses semantic context. The BERT-based models automatically learn contextual representations, capturing nuances like negation ("shall NOT be liable") that bag-of-words approaches miss entirely.
+```
+Contract-Analyzer/
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   └── v1/
+│   │   │       ├── endpoints/
+│   │   │       │   ├── contracts.py
+│   │   │       │   ├── health.py
+│   │   │       │   ├── missing_clauses.py
+│   │   │       │   ├── similarity.py
+│   │   │       │   └── unfair_clauses.py
+│   │   │       └── router.py
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   ├── exceptions.py
+│   │   │   ├── logging.py
+│   │   │   └── middleware.py
+│   │   ├── db/
+│   │   │   ├── models/
+│   │   │   └── base_class.py
+│   │   ├── ml/
+│   │   │   ├── clause_classifier.py
+│   │   │   ├── missing_clause_detector.py
+│   │   │   ├── model_loader.py
+│   │   │   ├── multitask_predictor.py
+│   │   │   ├── ner_extractor.py
+│   │   │   ├── risk_scorer.py
+│   │   │   ├── similarity_matcher.py
+│   │   │   └── unfair_detector.py
+│   │   ├── schemas/
+│   │   │   ├── contract.py
+│   │   │   ├── health.py
+│   │   │   ├── missing_clause.py
+│   │   │   └── similarity.py
+│   │   ├── services/
+│   │   │   ├── contract_service.py
+│   │   │   ├── llm_analysis_service.py
+│   │   │   ├── missing_clause_service.py
+│   │   │   ├── pdf_processor.py
+│   │   │   ├── similarity_service.py
+│   │   │   └── unfair_clause_service.py
+│   │   └── utils/
+│   │       └── text.py
+│   ├── models/          # Trained model weights (not committed)
+│   ├── uploads/
+│   ├── .env
+│   ├── .env.example
+│   ├── main.py
+│   └── requirements.txt
+│
+└── frontend/
+    ├── src/
+    │   ├── app/
+    │   │   ├── analysis/
+    │   │   ├── dashboard/
+    │   │   │   ├── clauses/
+    │   │   │   ├── entities/
+    │   │   │   ├── missing-clauses/
+    │   │   │   ├── models/
+    │   │   │   ├── reports/
+    │   │   │   ├── risk/
+    │   │   │   ├── settings/
+    │   │   │   └── similarity/
+    │   │   └── upload/
+    │   ├── components/
+    │   │   ├── layout/
+    │   │   └── ui/
+    │   │       ├── ClauseCard.tsx
+    │   │       ├── DocumentSummary.tsx
+    │   │       ├── EntityPanel.tsx
+    │   │       ├── FileUpload.tsx
+    │   │       ├── RiskGauge.tsx
+    │   │       └── ...
+    │   ├── context/
+    │   ├── services/
+    │   │   ├── api.ts
+    │   │   └── transforms.ts
+    │   └── types/
+    ├── .env.local
+    └── package.json
+```
 
 ---
 
 ## Tech Stack
 
-### Backend (Python)
-- **Framework**: FastAPI
-- **Deep Learning**: PyTorch, HuggingFace Transformers
-- **Classical ML**: scikit-learn, NumPy
-- **Database**: Supabase (PostgreSQL) via SQLAlchemy
-- **PDF Parsing**: PyMuPDF
-- **LLM Client**: httpx (async HTTP)
-- **Model Hub**: HuggingFace Hub (automatic download + caching)
-
-### Frontend (TypeScript)
-- **Framework**: Next.js (React)
-- **Styling**: TailwindCSS and Vanilla CSS with CSS variables (dark/light theme)
-- **HTTP Client**: Axios
-- **Icons**: Lucide React
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 14, TypeScript, Tailwind CSS |
+| Backend | FastAPI, Python 3.11+ |
+| ML Models | HuggingFace Transformers, PyTorch |
+| PDF Processing | PyMuPDF / pdfplumber |
 
 ---
 
@@ -375,142 +158,175 @@ DeepSeek R1 models emit chain-of-thought reasoning inside `<think>...</think>` X
 
 - Python 3.11+
 - Node.js 18+
-- PostgreSQL database (or Supabase account)
-- (Optional) Groq API key for fast LLM inference
+- npm or yarn
+- Git
 
-### Backend Setup
+---
+
+### 1. Clone the Repository
 
 ```bash
-cd Legal-Contract-Analyzer/backend
-
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate        # Linux/macOS
-venv\Scripts\Activate.ps1       # Windows PowerShell
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your DATABASE_URL, LLM provider settings, etc.
-
-# Run the server
-python main.py
+git clone https://github.com/<your-username>/Contract-Analyzer.git
+cd Contract-Analyzer
 ```
 
-On first startup, all DL models are downloaded from HuggingFace Hub and cached locally. This may take several minutes.
+---
 
-### Frontend Setup
+### 2. Backend Setup
 
 ```bash
-cd Legal-Contract-Analyzer/frontend
+cd backend
+```
 
+Create and activate a virtual environment:
+
+```bash
+# Windows
+python -m venv venv
+venv\Scripts\activate
+
+# macOS / Linux
+python -m venv venv
+source venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Configure environment variables:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and fill in the required values:
+
+```env
+DATABASE_URL=sqlite:///./contract_analyzer.db
+MODEL_DIR=./models
+UPLOAD_DIR=./uploads
+SECRET_KEY=your-secret-key-here
+```
+
+Place trained model weights in the `models/` directory. The expected structure is:
+
+```
+backend/models/
+├── clause_classifier/
+├── unfair_detector/
+└── ner_extractor/
+```
+
+Run the backend server:
+
+```bash
+python -m main
+```
+
+The API will be available at `http://localhost:8000`  
+Swagger docs at `http://localhost:8000/docs`
+
+---
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+```
+
+Install dependencies:
+
+```bash
 npm install
+```
+
+Configure environment variables:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Edit `.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+Run the development server:
+
+```bash
 npm run dev
 ```
 
-The frontend runs on `http://localhost:3000`.
+The frontend will be available at `http://localhost:3000`
 
 ---
 
-## Environment Variables
+## Features
 
-Create a `.env` file in `backend/`:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string (Supabase) | *Required* |
-| `LLM_ENABLED` | Enable/disable LLM analysis | `true` |
-| `LLM_PROVIDER` | Active LLM provider: `ollama` or `groq` | `ollama` |
-| **Ollama Config** | | |
-| `OLLAMA_BASE_URL` | Ollama API endpoint | `http://127.0.0.1:11434` |
-| `OLLAMA_MODEL` | Ollama model name | `llama3` |
-| `OLLAMA_API_KEY` | Ollama Cloud API key (if using cloud) | `None` |
-| `OLLAMA_CHUNK_SIZE` | Clauses per LLM prompt (Ollama) | `3` |
-| **Groq Config** | | |
-| `GROQ_API_KEY` | Groq API key from console.groq.com | `None` |
-| `GROQ_MODEL` | Groq model name | `deepseek-r1-distill-llama-70b` |
-| `GROQ_CHUNK_SIZE` | Clauses per LLM prompt (Groq) | `8` |
-| `GROQ_MAX_TOKENS` | Max output tokens | `4096` |
-| **Shared** | | |
-| `LLM_TIMEOUT_SECONDS` | Total LLM timeout | `900` |
-| `LLM_READ_TIMEOUT_SECONDS` | Per-chunk read timeout | `600` |
-| `NER_MODEL` | HuggingFace NER model | `Devil1710/Legal-NER-v2` |
-| `HF_MULTITASK_REPO_ID` | Multi-task BERT model | `AnkushRaheja/Cls_Class_Risk_Scr` |
-| `MAX_UPLOAD_SIZE_MB` | Maximum PDF upload size | `20` |
+- **Clause Classification** — Automatically categorizes contract clauses using Legal-BERT trained on LEDGAR
+- **Unfair Clause Detection** — Identifies potentially unfair terms using BERT with Focal Loss
+- **Named Entity Recognition** — Extracts parties, dates, amounts, jurisdictions, and terms
+- **Missing Clause Detection** — Flags standard clauses that are absent from the contract
+- **Risk Scoring** — Generates an overall risk score with per-clause breakdown
+- **Contract Similarity** — Compares contracts for similarity analysis
+- **PDF Upload** — Supports direct PDF contract upload and processing
 
 ---
 
-## Project Structure
+## API Endpoints
 
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/api/v1/contracts/analyze` | Full contract analysis |
+| POST | `/api/v1/contracts/upload` | Upload a contract PDF |
+| GET | `/api/v1/missing-clauses` | Get missing clause report |
+| POST | `/api/v1/similarity` | Compare two contracts |
+| GET | `/api/v1/unfair-clauses` | List detected unfair clauses |
+
+Full interactive API documentation is available at `/docs` when the backend is running.
+
+---
+
+## Key Dependencies
+
+**Backend**
 ```
-Legal-Contract-Analyzer/
-├── backend/
-│   ├── main.py                              # FastAPI entry point, model warmup
-│   ├── requirements.txt
-│   ├── app/
-│   │   ├── ml/                              # ← DL MODEL LAYER
-│   │   │   ├── multitask_predictor.py       #   Multi-Task Legal-BERT (Cls + Risk)
-│   │   │   ├── unfair_detector.py           #   BERT Unfair Clause Classifier
-│   │   │   ├── ner_extractor.py             #   Legal-BERT NER (IOB2)
-│   │   │   ├── clause_classifier.py         #   BERT clause classifier
-│   │   │   ├── risk_scorer.py               #   sklearn Ridge baseline
-│   │   │   ├── clause_segmenter.py          #   Regex clause segmentation
-│   │   │   ├── similarity_matcher.py        #   Template similarity
-│   │   │   ├── missing_clause_detector.py   #   Rule-based missing clause detection
-│   │   │   └── model_loader.py              #   HuggingFace Hub pkl loader
-│   │   ├── services/                        # ← BUSINESS LOGIC
-│   │   │   ├── contract_service.py          #   Full pipeline orchestrator
-│   │   │   ├── llm_analysis_service.py      #   Hybrid LLM provider (Ollama/Groq)
-│   │   │   ├── pdf_processor.py             #   PDF text extraction
-│   │   │   ├── unfair_clause_service.py     #   Standalone unfair detection
-│   │   │   ├── similarity_service.py        #   Similarity comparison
-│   │   │   └── missing_clause_service.py    #   Missing clause detection
-│   │   ├── api/v1/endpoints/               # REST endpoints
-│   │   ├── core/config.py                  # Pydantic settings (all env vars)
-│   │   ├── db/                             # SQLAlchemy models + session
-│   │   └── schemas/                        # Pydantic request/response schemas
-│   └── tests/
-├── frontend/
-│   └── src/
-│       ├── app/
-│       │   ├── page.tsx                     # Landing page
-│       │   └── dashboard/
-│       │       ├── page.tsx                 # Main dashboard
-│       │       ├── upload/                  # Upload pipeline UI
-│       │       ├── clauses/                 # Clause explorer with LLM status
-│       │       ├── missing-clauses/         # Missing clause detection UI
-│       │       ├── entities/                # NER entity browser
-│       │       ├── similarity/              # Template similarity
-│       │       ├── risk/                    # Risk analysis
-│       │       └── models/                  # Model info page
-│       ├── context/AnalysisContext.tsx       # Global state + notifications
-│       ├── components/                      # Reusable UI components
-│       └── services/api.ts                  # Backend API client
-└── README.md
+fastapi
+uvicorn
+transformers
+torch
+sqlalchemy
+pydantic
+python-multipart
+pdfplumber
 ```
 
----
-
-## API Reference
-
-Base URL: `http://localhost:8000/api/v1`
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Server status |
-| `/contracts/upload` | POST | Upload PDF contract |
-| `/contracts/{id}/analyze` | GET | Run full DL pipeline |
-| `/contracts/{id}` | GET | Get analysis results |
-| `/contracts/{id}/llm-analyze-clauses` | POST | LLM Phase 1: clause analysis |
-| `/contracts/{id}/llm-analyze-missing` | POST | LLM Phase 2: missing clauses |
-| `/unfair-clauses/detect` | POST | Standalone unfair detection |
-| `/similarity/compare` | POST | Template similarity |
-| `/missing-clauses/detect` | POST | Missing clause detection |
+**Frontend**
+```
+next
+react
+typescript
+tailwindcss
+axios
+```
 
 ---
 
 ## License
 
-This project was developed by **Jayesh Rajbhar**, **Gaurav Dongre** and **Kalash Thakare** as part of the Deep Learning Lab coursework under **Prof. Vikas R. Gupta**. For academic use only.
+This project was developed as an academic project. All rights reserved by the respective authors.
+
+---
+
+## Acknowledgements
+
+- [HuggingFace Transformers](https://huggingface.co/transformers/)
+- [nlpaueb/legal-bert-base-uncased](https://huggingface.co/nlpaueb/legal-bert-base-uncased)
+- [LEDGAR Dataset](https://huggingface.co/datasets/coastalcph/lex_glue)
+- [LEXGLUE Benchmark](https://huggingface.co/datasets/coastalcph/lex_glue)
+- [seqeval](https://github.com/chakki-works/seqeval) for NER evaluation
