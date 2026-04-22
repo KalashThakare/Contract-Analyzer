@@ -2,6 +2,8 @@
 
 An AI-powered legal contract analysis system that classifies clauses, detects unfair terms, extracts named entities, identifies missing clauses, and assesses contract risk — built with Legal-BERT, FastAPI, and Next.js.
 
+![Aethel-AI](https://github.com/KalashThakare/Contract-Analyzer/blob/main/screenshots/1.png)
+
 ---
 
 ## Project Guide
@@ -17,6 +19,24 @@ An AI-powered legal contract analysis system that classifies clauses, detects un
 | Kalash Thakare | 35 | Unfair Clause Detection |
 | Jayesh Rajbhar | 34 | Clause Classification (Legal-BERT on LEDGAR) |
 | Gaurav Dongre | 28 | Named Entity Recognition (Legal-BERT NER) |
+
+---
+
+---
+
+## Screenshots
+
+### Dashboard Overview
+
+![Dashboard](https://github.com/KalashThakare/Contract-Analyzer/blob/main/screenshots/2.png)
+
+### Graph visualisation
+
+![Clause Classification](https://github.com/KalashThakare/Contract-Analyzer/blob/main/screenshots/3.png)
+
+### Detailed Analysis
+
+![NER Panel](https://github.com/KalashThakare/Contract-Analyzer/blob/main/screenshots/4.png)
 
 ---
 
