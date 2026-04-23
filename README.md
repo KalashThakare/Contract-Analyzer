@@ -22,6 +22,17 @@ An AI-powered legal contract analysis system that classifies clauses, detects un
 
 ---
 
+## Model Links (Hugging Face)
+
+- **Kalash Thakare — Unfair Clause Detection**  
+  https://huggingface.co/KalashT/unfair-clause-classifier  
+
+- **Jayesh Rajbhar — Clause Classification / Risk Scoring**  
+  https://huggingface.co/AnkushRaheja/Cls_Class_Risk_Scr  
+
+- **Gaurav Dongre — Named Entity Recognition (NER)**  
+  https://huggingface.co/Devil1710/Legal-NER-v2  
+
 ---
 
 ## Screenshots
